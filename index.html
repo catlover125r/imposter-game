@@ -165,9 +165,9 @@
             <button class="btn btn-secondary btn-small" onclick="leaveRoom()" style="margin-top: 20px;">Leave Room</button>
         </div>
         <div class="screen" id="multiGameScreen">
-            <h1 id="multiRoleHeader">🎭 YOUR ROLE</h1>
+            <h1 id="roleTitle">🎭 YOUR ROLE</h1>
             <div class="role-card" id="roleCard">
-                <div class="role-label" id="multiRoleLabel">You are:</div>
+                <div class="role-label" id="roleLabel">You are:</div>
                 <div class="role-text" id="multiRoleText">Loading...</div>
             </div>
             <p class="vote-instruction">Vote for who you think is the imposter!</p>
@@ -445,34 +445,23 @@
 
         function showMultiGameScreen(data) {
             const myRole = data.gameData.roles[playerId];
-            const rc = document.getElementById('roleCard');
-            const rt = document.getElementById('multiRoleText');
-            const header = document.getElementById('multiRoleHeader');
-            const label = document.getElementById('multiRoleLabel');
-
-            if (myRole.isImposter) {
-                // IMPOSTER UI
-                rc.className = 'role-card imposter';
-                rt.textContent = 'IMPOSTER';
-                header.textContent = '🎭 YOUR ROLE';
+            const rc = document.getElementById('roleCard'), rt = document.getElementById('multiRoleText');
+            const title = document.getElementById('roleTitle'), label = document.getElementById('roleLabel');
+            if(myRole.isImposter) { 
+                rc.className = 'role-card imposter'; 
+                rt.textContent = 'IMPOSTER'; 
+                title.textContent = '🎭 YOUR ROLE';
                 label.style.display = 'block';
-                rt.style.textAlign = ''; // reset alignment
-            } else {
-                // CREWMATE UI (WORD)
-                rc.className = 'role-card crewmate';
-                rt.textContent = myRole.word;
-
-                // Update header & remove "You are:"
-                header.textContent = '🎭 YOUR WORD';
-                label.style.display = 'none';
-
-                // Center the word
-                rt.style.textAlign = 'center';
+                label.textContent = 'You are:';
             }
-
+            else { 
+                rc.className = 'role-card crewmate'; 
+                rt.textContent = myRole.word; 
+                title.textContent = '🎭 YOUR WORD';
+                label.style.display = 'none';
+            }
             updateVotingUI(data);
-            showScreen('multiGameScreen');
-            currentScreen = 'multiGameScreen';
+            showScreen('multiGameScreen'); currentScreen = 'multiGameScreen';
         }
 
         function updateVotingUI(data) {
