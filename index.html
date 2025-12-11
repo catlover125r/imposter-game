@@ -188,6 +188,7 @@
             <div class="player-list"><h3>Final Votes</h3><div id="endPlayerList"></div></div>
             <button class="btn btn-secondary" id="newRoundBtn" onclick="newMultiRound()" style="display: none;">New Round</button>
             <button class="btn btn-primary" id="backToLobbyBtn" onclick="backToMultiLobby()" style="display: none;">Back to Lobby</button>
+            <button class="btn btn-secondary btn-small" id="leaveRoomEndBtn" onclick="leaveRoom()" style="display: none;">Leave Room</button>
             <p class="status waiting" id="endStatus">Waiting for host...</p>
         </div>
     </div>
@@ -434,10 +435,21 @@
                 
                 if(data.host === playerId) isHost = true;
                 updateLobbyPlayerList(data.players);
-                if(data.status === 'playing' && currentScreen === 'multiLobbyScreen') { showMultiGameScreen(data); }
-                else if(data.status === 'playing' && currentScreen === 'multiGameScreen') { updateVotingUI(data); }
-                else if(data.status === 'results' && currentScreen === 'multiGameScreen') { showMultiEndScreen(data); }
-                else if(data.status === 'lobby' && (currentScreen === 'multiEndScreen' || currentScreen === 'multiGameScreen')) { showMultiLobbyFromEnd(data); }
+                
+                // Handle all state transitions
+                if(data.status === 'playing' && (currentScreen === 'multiLobbyScreen' || currentScreen === 'multiEndScreen')) { 
+                    showMultiGameScreen(data); 
+                }
+                else if(data.status === 'playing' && currentScreen === 'multiGameScreen') { 
+                    updateVotingUI(data); 
+                }
+                else if(data.status === 'results' && currentScreen === 'multiGameScreen') { 
+                    showMultiEndScreen(data); 
+                }
+                else if(data.status === 'lobby' && (currentScreen === 'multiEndScreen' || currentScreen === 'multiGameScreen')) { 
+                    showMultiLobbyFromEnd(data); 
+                }
+                
                 if(currentScreen === 'multiEndScreen') updateEndScreenButtons();
             });
         }
@@ -506,7 +518,6 @@
                 if(id !== playerId) {
                     const btn = document.createElement('button'); btn.className = 'vote-btn';
                     if(myVote === id) { btn.classList.add('voted'); btn.textContent = 'Voted'; }
-                    else if(myVote) { btn.textContent = 'Vote'; btn.disabled = true; }
                     else { btn.textContent = 'Vote'; }
                     btn.onclick = () => castVote(id); d.appendChild(btn);
                 }
@@ -552,8 +563,18 @@
         }
 
         function updateEndScreenButtons() {
-            if(isHost) { document.getElementById('newRoundBtn').style.display = 'block'; document.getElementById('backToLobbyBtn').style.display = 'block'; document.getElementById('endStatus').style.display = 'none'; }
-            else { document.getElementById('newRoundBtn').style.display = 'none'; document.getElementById('backToLobbyBtn').style.display = 'none'; document.getElementById('endStatus').style.display = 'block'; }
+            if(isHost) { 
+                document.getElementById('newRoundBtn').style.display = 'block'; 
+                document.getElementById('backToLobbyBtn').style.display = 'block'; 
+                document.getElementById('leaveRoomEndBtn').style.display = 'none';
+                document.getElementById('endStatus').style.display = 'none'; 
+            }
+            else { 
+                document.getElementById('newRoundBtn').style.display = 'none'; 
+                document.getElementById('backToLobbyBtn').style.display = 'none'; 
+                document.getElementById('leaveRoomEndBtn').style.display = 'block';
+                document.getElementById('endStatus').style.display = 'block'; 
+            }
         }
 
         async function newMultiRound() {
