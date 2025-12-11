@@ -7,6 +7,32 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; color: white; }
+        
+        /* Ad containers */
+        .ad-wrapper {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 160px;
+            min-height: 600px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .ad-left {
+            left: 10px;
+        }
+        .ad-right {
+            right: 10px;
+        }
+        /* Hide ads on smaller screens */
+        @media (max-width: 1200px) {
+            .ad-wrapper {
+                display: none;
+            }
+        }
+        
         .container { text-align: center; padding: 20px; width: 100%; max-width: 600px; }
         h1 { font-size: 2.5rem; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
         .screen { display: none; flex-direction: column; align-items: center; gap: 20px; }
@@ -85,6 +111,31 @@
     </style>
 </head>
 <body>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1190255474469820" crossorigin="anonymous"></script>
+    
+    <!-- Left Ad -->
+    <div class="ad-wrapper ad-left">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-1190255474469820"
+             data-ad-slot="5870859418"
+             data-ad-format="vertical"
+             data-full-width-responsive="false"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+    
+    <!-- Right Ad -->
+    <div class="ad-wrapper ad-right">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-1190255474469820"
+             data-ad-slot="5870859418"
+             data-ad-format="vertical"
+             data-full-width-responsive="false"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+    
     <div class="container">
         <div class="screen active" id="modeScreen">
             <h1>🎭 IMPOSTER</h1>
