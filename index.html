@@ -106,7 +106,8 @@
                 <input type="number" id="singlePlayerCount" min="3" max="20" value="4" style="width: 100px; height: 60px; font-size: 2rem;">
             </div>
             <button class="btn btn-primary" onclick="startSingleGame()">PLAY</button>
-            <div class="word-editor-section">
+            <button class="btn btn-secondary btn-small" onclick="toggleSingleWordEditor()" id="singleEditBtn" style="margin-top: 10px;">📝 Edit Word List</button>
+            <div class="word-editor-section" id="singleWordEditorSection" style="display: none;">
                 <h3 style="color: #4ecca3; margin-bottom: 10px;">📝 Word List (this game only)</h3>
                 <p style="color: #888; font-size: 0.9rem; margin-bottom: 10px;">One word per line, or separate with commas</p>
                 <div class="word-list-editor">
@@ -115,6 +116,7 @@
                 </div>
                 <div class="button-row" style="margin-top: 10px;">
                     <button class="btn btn-secondary btn-small" onclick="resetWordsSingle()">Reset to Default</button>
+                    <button class="btn btn-primary btn-small" onclick="toggleSingleWordEditor()">Done</button>
                 </div>
             </div>
             <p class="instructions">Each player taps a box to see their role.<br>One person is the IMPOSTER!</p>
@@ -150,7 +152,8 @@
             <div class="player-list"><h3>Players</h3><div id="playerListContainer"></div></div>
             <button class="btn btn-primary" id="startGameBtn" onclick="startMultiGame()" style="display: none;">Start Game</button>
             <p class="status waiting" id="lobbyStatus">Waiting for host to start...</p>
-            <div class="word-editor-section">
+            <button class="btn btn-secondary btn-small" onclick="toggleMultiWordEditor()" id="multiEditBtn" style="margin-top: 10px;">📝 Edit Word List</button>
+            <div class="word-editor-section" id="multiWordEditorSection" style="display: none;">
                 <h3 style="color: #4ecca3; margin-bottom: 10px;">📝 Word List (this room only)</h3>
                 <p style="color: #888; font-size: 0.9rem; margin-bottom: 10px;">One word per line, or separate with commas</p>
                 <div class="word-list-editor">
@@ -269,6 +272,28 @@
         function initMultiWordEditor() { 
             const t = document.getElementById('multiWordTextarea'); 
             if(t) { t.value = wordsToText(multiModeWords); updateMultiWordCount(); } 
+        }
+
+        function toggleSingleWordEditor() {
+            const section = document.getElementById('singleWordEditorSection');
+            if(section.style.display === 'none') {
+                section.style.display = 'block';
+                document.getElementById('singleEditBtn').textContent = '📝 Hide Word List';
+            } else {
+                section.style.display = 'none';
+                document.getElementById('singleEditBtn').textContent = '📝 Edit Word List';
+            }
+        }
+        
+        function toggleMultiWordEditor() {
+            const section = document.getElementById('multiWordEditorSection');
+            if(section.style.display === 'none') {
+                section.style.display = 'block';
+                document.getElementById('multiEditBtn').textContent = '📝 Hide Word List';
+            } else {
+                section.style.display = 'none';
+                document.getElementById('multiEditBtn').textContent = '📝 Edit Word List';
+            }
         }
 
         function selectMode(mode) { 
