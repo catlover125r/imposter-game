@@ -213,6 +213,36 @@
         // Session-only words (not saved to localStorage)
         let singleModeWords = [...defaultWords];
         let multiModeWords = [...defaultWords];
+        
+        // Shuffle queues - words get shuffled and used one by one
+        let singleWordQueue = [];
+        let multiWordQueue = [];
+        
+        // Shuffle array helper function
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+        
+        // Get next word from single mode queue
+        function getNextSingleWord() {
+            if (singleWordQueue.length === 0) {
+                singleWordQueue = shuffleArray(singleModeWords);
+            }
+            return singleWordQueue.pop();
+        }
+        
+        // Get next word from multi mode queue (called by host)
+        function getNextMultiWord(wordList) {
+            if (multiWordQueue.length === 0) {
+                multiWordQueue = shuffleArray(wordList);
+            }
+            return multiWordQueue.pop();
+        }
 
         function parseWordsFromText(text) { return text.split(/[,\n]+/).map(w => w.trim()).filter(w => w.length > 0); }
         function wordsToText(arr) { return arr.join('\n'); }
@@ -234,11 +264,14 @@
                 singleModeWords = [...defaultWords];
                 t.value = wordsToText(singleModeWords);
             }
+            // Reset queue when words change
+            singleWordQueue = [];
             updateSingleWordCount();
         }
         
         function resetWordsSingle() { 
             singleModeWords = [...defaultWords]; 
+            singleWordQueue = [];
             document.getElementById('singleWordTextarea').value = wordsToText(singleModeWords); 
             updateSingleWordCount(); 
         }
@@ -251,6 +284,8 @@
                 multiModeWords = [...defaultWords]; 
                 t.value = wordsToText(multiModeWords); 
             } 
+            // Reset queue when words change
+            multiWordQueue = [];
             updateMultiWordCount(); 
             if(roomRef) await roomRef.child('words').set(multiModeWords); 
             alert('Words saved for this room!'); 
@@ -258,14 +293,16 @@
         
         async function resetWordsMulti() { 
             multiModeWords = [...defaultWords]; 
+            multiWordQueue = [];
             document.getElementById('multiWordTextarea').value = wordsToText(multiModeWords); 
             updateMultiWordCount(); 
             if(roomRef) await roomRef.child('words').set(multiModeWords); 
         }
         
         function initSingleWordEditor() { 
-            // Always start with default words
+            // Always start with default words and fresh queue
             singleModeWords = [...defaultWords];
+            singleWordQueue = [];
             const t = document.getElementById('singleWordTextarea'); 
             if(t) { t.value = wordsToText(singleModeWords); updateSingleWordCount(); } 
         }
@@ -328,7 +365,7 @@
         }
         function setupSingleRound() { 
             singleImposterIndex = Math.floor(Math.random() * singlePlayerCount); 
-            singleCurrentWord = singleModeWords[Math.floor(Math.random() * singleModeWords.length)]; 
+            singleCurrentWord = getNextSingleWord();
             singleRevealedCount = 0; 
             const c = document.getElementById('singlePlayerBoxes'); 
             c.innerHTML = ''; 
@@ -474,7 +511,7 @@
             const impIdx = Math.floor(Math.random() * playerIds.length);
             const imposterId = playerIds[impIdx];
             const gameWords = data.words || multiModeWords;
-            const word = gameWords[Math.floor(Math.random() * gameWords.length)];
+            const word = getNextMultiWord(gameWords);
             const roles = {}, votes = {};
             playerIds.forEach(id => { roles[id] = { isImposter: id === imposterId, word: id === imposterId ? null : word }; votes[id] = null; });
             await roomRef.update({ gameData: { roles, word, imposterId, votes }, status: 'playing' });
@@ -584,7 +621,7 @@
             const impIdx = Math.floor(Math.random() * playerIds.length);
             const imposterId = playerIds[impIdx];
             const gameWords = data.words || multiModeWords;
-            const word = gameWords[Math.floor(Math.random() * gameWords.length)];
+            const word = getNextMultiWord(gameWords);
             const roles = {}, votes = {};
             playerIds.forEach(id => { roles[id] = { isImposter: id === imposterId, word: id === imposterId ? null : word }; votes[id] = null; });
             await roomRef.update({ gameData: { roles, word, imposterId, votes }, status: 'playing' });
@@ -612,8 +649,9 @@
                 }
             }
             playerId = null; roomCode = null; isHost = false; roomRef = null;
-            // Reset to default words when leaving
+            // Reset to default words and clear queue when leaving
             multiModeWords = [...defaultWords];
+            multiWordQueue = [];
             document.getElementById('menuError').textContent = '';
             document.getElementById('playerName').value = '';
             document.getElementById('joinCode').value = '';
