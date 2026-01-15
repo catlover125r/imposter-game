@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Imposter Game</title>
+    <title>Imposter Game - Free Online Party Game for Friends & Family</title>
+    <meta name="description" content="Play Imposter, the free online social deduction party game. One player is secretly the imposter - can you find them? Works on any device, no app download needed.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; color: white; }
@@ -20,21 +21,17 @@
             align-items: center;
             justify-content: center;
         }
-        .ad-left {
-            left: 10px;
-        }
-        .ad-right {
-            right: 10px;
-        }
-        /* Hide ads on smaller screens */
+        .ad-left { left: 10px; }
+        .ad-right { right: 10px; }
         @media (max-width: 1200px) {
-            .ad-wrapper {
-                display: none;
-            }
+            .ad-wrapper { display: none; }
         }
         
-        .container { text-align: center; padding: 20px; width: 100%; max-width: 600px; }
-        h1 { font-size: 2.5rem; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
+        .container { text-align: center; padding: 20px; width: 100%; max-width: 700px; }
+        h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
+        h2 { font-size: 1.8rem; margin-bottom: 15px; color: #4ecca3; }
+        h3 { font-size: 1.3rem; margin-bottom: 10px; color: #e94560; }
+        p { line-height: 1.6; margin-bottom: 15px; }
         .screen { display: none; flex-direction: column; align-items: center; gap: 20px; }
         .screen.active { display: flex; }
         input[type="text"], input[type="number"] { width: 100%; max-width: 300px; padding: 15px; font-size: 1.2rem; border: none; border-radius: 10px; background: #0f3460; color: white; text-align: center; }
@@ -108,6 +105,28 @@
         .button-row { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
         .instructions { color: #888; font-size: 0.9rem; margin-top: 10px; }
         .vote-instruction { color: #888; font-size: 0.9rem; margin-bottom: 10px; }
+        
+        /* Content pages styles */
+        .content-box { background: #0f3460; border-radius: 15px; padding: 25px; margin: 15px 0; text-align: left; }
+        .content-box p { color: #ccc; }
+        .content-box ul, .content-box ol { color: #ccc; margin-left: 20px; margin-bottom: 15px; }
+        .content-box li { margin-bottom: 8px; line-height: 1.5; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .feature-card { background: #1a1a2e; border: 2px solid #4ecca3; border-radius: 12px; padding: 20px; text-align: center; }
+        .feature-card .icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .feature-card h3 { color: #4ecca3; margin-bottom: 8px; font-size: 1.1rem; }
+        .feature-card p { color: #888; font-size: 0.9rem; margin: 0; }
+        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+        .nav-link { color: #4ecca3; text-decoration: none; font-size: 0.9rem; padding: 8px 15px; border: 1px solid #4ecca3; border-radius: 20px; transition: all 0.3s; }
+        .nav-link:hover { background: #4ecca3; color: #1a1a2e; }
+        .tip-box { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); border-left: 4px solid #e94560; padding: 15px; margin: 15px 0; border-radius: 0 10px 10px 0; }
+        .tip-box h4 { color: #e94560; margin-bottom: 8px; }
+        .tip-box p { color: #ccc; margin: 0; font-size: 0.95rem; }
+        .footer-nav { margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; }
+        .scroll-content { max-height: 70vh; overflow-y: auto; padding-right: 10px; }
+        .scroll-content::-webkit-scrollbar { width: 8px; }
+        .scroll-content::-webkit-scrollbar-track { background: #1a1a2e; border-radius: 4px; }
+        .scroll-content::-webkit-scrollbar-thumb { background: #4ecca3; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -137,7 +156,304 @@
     </div>
     
     <div class="container">
-        <div class="screen active" id="modeScreen">
+        <!-- HOME SCREEN (NEW) -->
+        <div class="screen active" id="homeScreen">
+            <h1>🎭 IMPOSTER</h1>
+            <p style="color: #ccc; font-size: 1.1rem; max-width: 500px;">The free online social deduction party game. One player is secretly the imposter — can your group find them before it's too late?</p>
+            
+            <button class="btn btn-primary" onclick="showScreen('modeScreen')" style="font-size: 1.4rem; padding: 20px 50px;">PLAY NOW</button>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">👥</div>
+                    <h3>3-20 Players</h3>
+                    <p>Perfect for small gatherings or big parties</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">📱</div>
+                    <h3>Any Device</h3>
+                    <p>Works on phones, tablets, and computers</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🆓</div>
+                    <h3>100% Free</h3>
+                    <p>No downloads, no sign-ups, no ads interrupting gameplay</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">⚡</div>
+                    <h3>Instant Start</h3>
+                    <p>Create a room and play in seconds</p>
+                </div>
+            </div>
+            
+            <div class="content-box">
+                <h2 style="text-align: center; margin-bottom: 15px;">How It Works</h2>
+                <p>Everyone receives a secret word — except one player, the <strong style="color: #e94560;">Imposter</strong>, who gets nothing. Players take turns giving one-word clues about their word. The imposter must bluff their way through without knowing what everyone else knows!</p>
+                <p>After the clue round, everyone votes on who they think the imposter is. If the group catches them, they win! If the imposter escapes detection, they win!</p>
+            </div>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
+                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
+                <a href="#" class="nav-link" onclick="showScreen('privacyScreen'); return false;">🔒 Privacy Policy</a>
+            </div>
+        </div>
+
+        <!-- HOW TO PLAY SCREEN (NEW) -->
+        <div class="screen" id="howToPlayScreen">
+            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
+            <h1>📖 How to Play</h1>
+            
+            <div class="scroll-content">
+                <div class="content-box">
+                    <h2>Game Overview</h2>
+                    <p>Imposter is a social deduction game where players try to identify the one person who doesn't belong. It's perfect for parties, family game nights, team building events, or any gathering where you want to spark conversation and laughter.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Setup (2 minutes)</h2>
+                    <ol>
+                        <li><strong>Choose your mode:</strong> Use "One Device" to pass a single phone around, or "Multiple Devices" so everyone plays on their own phone.</li>
+                        <li><strong>For Multiple Devices:</strong> One person creates a room and shares the 4-letter code. Everyone else joins using that code.</li>
+                        <li><strong>Need 3+ players:</strong> The game works best with 4-8 players, but supports up to 20!</li>
+                    </ol>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Gameplay</h2>
+                    <ol>
+                        <li><strong>Roles are assigned:</strong> Everyone secretly views their role. Most players see the same word (like "Pizza"). One player — the Imposter — sees only "IMPOSTER" with no word.</li>
+                        <li><strong>Give clues:</strong> Go around the circle. Each player says ONE word that relates to the secret word. The imposter must fake it!</li>
+                        <li><strong>Discuss:</strong> After clues, players discuss who they think is suspicious.</li>
+                        <li><strong>Vote:</strong> Everyone votes for who they think is the imposter. Majority wins!</li>
+                    </ol>
+                </div>
+                
+                <div class="tip-box">
+                    <h4>💡 Tip for Regular Players</h4>
+                    <p>Don't make your clues too obvious, or the imposter will figure out the word! But don't be too vague either, or you'll look suspicious yourself.</p>
+                </div>
+                
+                <div class="tip-box">
+                    <h4>🎭 Tip for Imposters</h4>
+                    <p>Listen carefully to other players' clues. Try to figure out the category or theme. Give a clue that could fit many words. Act confident!</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Winning the Game</h2>
+                    <p><strong style="color: #4ecca3;">Crewmates win</strong> if they correctly vote out the imposter.</p>
+                    <p><strong style="color: #e94560;">The Imposter wins</strong> if someone else gets the most votes, or if there's a tie.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Custom Word Lists</h2>
+                    <p>Want to theme your game? Click "Edit Word List" in the lobby to add your own words! Great ideas include:</p>
+                    <ul>
+                        <li>Movie titles for film buffs</li>
+                        <li>Inside jokes for friend groups</li>
+                        <li>Vocabulary words for classroom games</li>
+                        <li>Industry terms for work team building</li>
+                        <li>Holiday-themed words for seasonal parties</li>
+                    </ul>
+                    <p>Words reset to family-friendly defaults when you leave, so feel free to experiment!</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Example Round</h2>
+                    <p><em>The secret word is "Beach"</em></p>
+                    <p>Player 1: "Sand" ✓</p>
+                    <p>Player 2: "Waves" ✓</p>
+                    <p>Player 3 (Imposter): "Relaxing" — Could fit many words!</p>
+                    <p>Player 4: "Sunscreen" ✓</p>
+                    <p><em>Players discuss... Player 3's clue was generic. They vote and catch the imposter!</em></p>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="showScreen('modeScreen')">Play Now!</button>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link" onclick="showScreen('homeScreen'); return false;">🏠 Home</a>
+                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
+                <a href="#" class="nav-link" onclick="showScreen('privacyScreen'); return false;">🔒 Privacy</a>
+            </div>
+        </div>
+
+        <!-- ABOUT SCREEN (NEW) -->
+        <div class="screen" id="aboutScreen">
+            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
+            <h1>ℹ️ About Imposter</h1>
+            
+            <div class="scroll-content">
+                <div class="content-box">
+                    <h2>What is Imposter?</h2>
+                    <p>Imposter is a free, browser-based social deduction party game inspired by classic word games and hidden role games. It combines the best elements of games like Spyfall, Werewolf, and Codenames into a fast-paced, accessible experience anyone can enjoy.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Why We Built This</h2>
+                    <p>We wanted a party game that:</p>
+                    <ul>
+                        <li>Works instantly without app downloads or account creation</li>
+                        <li>Plays great on any device — phones, tablets, or computers</li>
+                        <li>Supports both in-person gatherings and remote play</li>
+                        <li>Is completely free with no paywalls or premium features</li>
+                        <li>Uses family-friendly content by default</li>
+                    </ul>
+                    <p>Imposter was built to bring people together for laughter, friendly deception, and memorable moments.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Perfect For</h2>
+                    <ul>
+                        <li><strong>House parties</strong> — Get everyone involved, even people who "don't like games"</li>
+                        <li><strong>Family gatherings</strong> — Safe, fun content for all ages</li>
+                        <li><strong>Team building</strong> — Break the ice and spark conversation</li>
+                        <li><strong>Classrooms</strong> — Educational and engaging vocabulary practice</li>
+                        <li><strong>Video calls</strong> — Stay connected with remote friends</li>
+                        <li><strong>Waiting rooms</strong> — Quick rounds pass the time</li>
+                    </ul>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Features</h2>
+                    <ul>
+                        <li>🎮 <strong>Two play modes:</strong> Single device (pass-and-play) or multiplayer (everyone on their own device)</li>
+                        <li>🔗 <strong>Easy room codes:</strong> 4-letter codes make joining simple</li>
+                        <li>📝 <strong>Custom words:</strong> Create themed games with your own word lists</li>
+                        <li>🗳️ <strong>Built-in voting:</strong> Automatic vote tallying and results</li>
+                        <li>🔄 <strong>Quick rounds:</strong> Play again instantly without re-setup</li>
+                        <li>📱 <strong>Responsive design:</strong> Looks great on any screen size</li>
+                    </ul>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Technical Details</h2>
+                    <p>Imposter uses real-time synchronization to keep all players connected. Games are hosted securely and rooms are automatically cleaned up after players leave. No personal data is collected or stored — just pure gameplay.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Contact</h2>
+                    <p>Have feedback, suggestions, or found a bug? We'd love to hear from you!</p>
+                    <p>Email: <strong style="color: #4ecca3;">contact@secretimposter.com</strong></p>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="showScreen('modeScreen')">Play Now!</button>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link" onclick="showScreen('homeScreen'); return false;">🏠 Home</a>
+                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
+                <a href="#" class="nav-link" onclick="showScreen('privacyScreen'); return false;">🔒 Privacy</a>
+            </div>
+        </div>
+
+        <!-- PRIVACY POLICY SCREEN (NEW) -->
+        <div class="screen" id="privacyScreen">
+            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
+            <h1>🔒 Privacy Policy</h1>
+            
+            <div class="scroll-content">
+                <div class="content-box">
+                    <p><strong>Last updated:</strong> January 2025</p>
+                    <p>Your privacy is important to us. This Privacy Policy explains how Imposter ("we", "us", or "our") collects, uses, and protects your information when you use our website at secretimposter.com.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Information We Collect</h2>
+                    <h3>Information You Provide</h3>
+                    <ul>
+                        <li><strong>Display Name:</strong> When playing multiplayer, you enter a nickname. This is temporary and not stored after you leave the room.</li>
+                        <li><strong>Custom Words:</strong> If you create custom word lists, these are stored temporarily in the game room and deleted when all players leave.</li>
+                    </ul>
+                    
+                    <h3>Information Collected Automatically</h3>
+                    <ul>
+                        <li><strong>Game Session Data:</strong> Temporary data needed to run the game (room codes, player connections, votes). This is deleted when the game ends.</li>
+                        <li><strong>Analytics:</strong> We may collect anonymous usage statistics to improve the game (pages visited, features used, device type). This data cannot identify you personally.</li>
+                    </ul>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Information We Do NOT Collect</h2>
+                    <ul>
+                        <li>Email addresses</li>
+                        <li>Real names</li>
+                        <li>Location data</li>
+                        <li>Payment information</li>
+                        <li>Social media accounts</li>
+                        <li>Any personally identifiable information</li>
+                    </ul>
+                </div>
+                
+                <div class="content-box">
+                    <h2>How We Use Information</h2>
+                    <p>The minimal information we collect is used solely to:</p>
+                    <ul>
+                        <li>Enable real-time multiplayer gameplay</li>
+                        <li>Display player names during games</li>
+                        <li>Improve game performance and fix bugs</li>
+                        <li>Understand how players use the game to make improvements</li>
+                    </ul>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Third-Party Services</h2>
+                    <h3>Firebase</h3>
+                    <p>We use Google Firebase to enable real-time multiplayer functionality. Firebase may collect anonymous technical data. See <a href="https://firebase.google.com/support/privacy" style="color: #4ecca3;" target="_blank">Firebase Privacy Policy</a>.</p>
+                    
+                    <h3>Google AdSense</h3>
+                    <p>We display ads through Google AdSense to support free gameplay. Google may use cookies to show relevant ads. See <a href="https://policies.google.com/privacy" style="color: #4ecca3;" target="_blank">Google Privacy Policy</a>.</p>
+                    <p>You can opt out of personalized advertising at <a href="https://www.google.com/settings/ads" style="color: #4ecca3;" target="_blank">Google Ads Settings</a>.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Cookies</h2>
+                    <p>Our website may use cookies for:</p>
+                    <ul>
+                        <li>Essential game functionality</li>
+                        <li>Analytics (understanding usage patterns)</li>
+                        <li>Advertising (through Google AdSense)</li>
+                    </ul>
+                    <p>You can control cookies through your browser settings.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Data Security</h2>
+                    <p>We implement reasonable security measures to protect game data. However, no internet transmission is 100% secure. Game rooms use randomly generated codes and data is automatically deleted after sessions end.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Children's Privacy</h2>
+                    <p>Imposter is designed to be family-friendly. We do not knowingly collect personal information from children under 13. The game uses only temporary display names that are deleted after each session.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Your Rights</h2>
+                    <p>Since we don't collect personal data, there is no personal information to access, modify, or delete. Game session data is automatically removed when you leave.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Changes to This Policy</h2>
+                    <p>We may update this Privacy Policy occasionally. Changes will be posted on this page with an updated "Last updated" date.</p>
+                </div>
+                
+                <div class="content-box">
+                    <h2>Contact Us</h2>
+                    <p>Questions about this Privacy Policy? Contact us at:</p>
+                    <p>Email: <strong style="color: #4ecca3;">contact@secretimposter.com</strong></p>
+                </div>
+            </div>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link" onclick="showScreen('homeScreen'); return false;">🏠 Home</a>
+                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
+                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
+            </div>
+        </div>
+
+        <!-- MODE SELECT SCREEN (existing, slightly modified) -->
+        <div class="screen" id="modeScreen">
+            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
             <h1>🎭 IMPOSTER</h1>
             <p style="color: #888; margin-bottom: 20px;">Choose your game mode</p>
             <div class="mode-buttons">
@@ -148,7 +464,12 @@
                     <span class="icon">📱📱📱</span><span>Multiple Devices</span><span class="subtitle">Everyone uses their own phone</span>
                 </button>
             </div>
+            <div class="nav-links" style="margin-top: 30px;">
+                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
+                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
+            </div>
         </div>
+
         <div class="screen" id="singleLobbyScreen">
             <button class="back-btn" onclick="backToModeSelect()">←</button>
             <h1>🎭 ONE DEVICE</h1>
@@ -172,6 +493,7 @@
             </div>
             <p class="instructions">Each player taps a box to see their role.<br>One person is the IMPOSTER!</p>
         </div>
+
         <div class="screen" id="singleGameScreen">
             <h1>🎭 Tap Your Box!</h1>
             <div class="player-boxes" id="singlePlayerBoxes"></div>
@@ -180,12 +502,14 @@
                 <button class="btn btn-primary" onclick="backToSingleLobby()">Back to Lobby</button>
             </div>
         </div>
+
         <div class="modal" id="singleModal">
             <div class="modal-content">
                 <div class="role-text" id="singleRoleText"></div>
                 <button class="btn btn-secondary" onclick="closeSingleModal()">OK</button>
             </div>
         </div>
+
         <div class="screen" id="multiMenuScreen">
             <button class="back-btn" onclick="backToModeSelect()">←</button>
             <h1>🎭 MULTIPLAYER</h1>
@@ -196,6 +520,7 @@
             <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
             <p class="error" id="menuError"></p>
         </div>
+
         <div class="screen" id="multiLobbyScreen">
             <h1>🎭 LOBBY</h1>
             <p>Room Code:</p>
@@ -218,6 +543,7 @@
             </div>
             <button class="btn btn-secondary btn-small" onclick="leaveRoom()" style="margin-top: 20px;">Leave Room</button>
         </div>
+
         <div class="screen" id="multiGameScreen">
             <h1 id="roleTitle">🎭 YOUR ROLE</h1>
             <div class="role-card" id="roleCard">
@@ -228,6 +554,7 @@
             <div class="player-list"><h3>🗳️ Vote</h3><div id="votePlayerList"></div></div>
             <p class="status" id="voteStatus">Waiting for votes...</p>
         </div>
+
         <div class="screen" id="multiEndScreen">
             <h1>🎭 RESULTS</h1>
             <div class="result-card" id="resultCard">
@@ -243,6 +570,7 @@
             <p class="status waiting" id="endStatus">Waiting for host...</p>
         </div>
     </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script>
@@ -259,7 +587,7 @@
         const db = firebase.database();
 
         // Default words - always start fresh with these
-        const defaultWords = ["Pizza", "Coffee", "Sushi", "Hamburger", "Ice cream", "Chocolate", "Sandwich", "Pasta", "Cookies", "Bacon", "Elephant", "Dolphin", "Penguin", "Giraffe", "Octopus", "Butterfly", "Tiger", "Kangaroo", "Shark", "Eagle", "Umbrella", "Backpack", "Sunglasses", "Headphones", "Flashlight", "Wallet", "Pillow", "Camera", "Skateboard", "Guitar", "Aces", "Beach", "Library", "Restaurant", "Airport", "Stadium", "Hospital", "Museum", "Gym", "Theater", "Park", "Swimming", "Dancing", "Cooking", "Reading", "Painting", "Camping", "Shopping", "Singing", "Jogging", "Gaming", "Teacher", "Doctor", "Chef", "Firefighter", "Pilot", "Artist", "Scientist", "Musician", "Athlete", "Photographer"];
+        const defaultWords = ["Pizza", "Coffee", "Sushi", "Hamburger", "Ice cream", "Chocolate", "Sandwich", "Pasta", "Cookies", "Bacon", "Elephant", "Dolphin", "Penguin", "Giraffe", "Octopus", "Butterfly", "Tiger", "Kangaroo", "Shark", "Eagle", "Umbrella", "Backpack", "Sunglasses", "Headphones", "Flashlight", "Wallet", "Pillow", "Camera", "Skateboard", "Guitar", "Beach", "Library", "Restaurant", "Airport", "Stadium", "Hospital", "Museum", "Gym", "Theater", "Park", "Swimming", "Dancing", "Cooking", "Reading", "Painting", "Camping", "Shopping", "Singing", "Jogging", "Gaming", "Teacher", "Doctor", "Chef", "Firefighter", "Pilot", "Artist", "Scientist", "Musician", "Athlete", "Photographer"];
         
         // Session-only words (not saved to localStorage)
         let singleModeWords = [...defaultWords];
@@ -393,10 +721,12 @@
                 showScreen('multiMenuScreen'); 
             } 
         }
+        
         function backToModeSelect() { 
             if(roomRef && playerId) { leaveRoom(); return; } 
             showScreen('modeScreen'); 
         }
+        
         function showScreen(id) { 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
             document.getElementById(id).classList.add('active'); 
@@ -414,6 +744,7 @@
             setupSingleRound(); 
             showScreen('singleGameScreen'); 
         }
+        
         function setupSingleRound() { 
             singleImposterIndex = Math.floor(Math.random() * singlePlayerCount); 
             singleCurrentWord = getNextSingleWord();
@@ -429,6 +760,7 @@
             } 
             document.getElementById('singleEndButtons').style.display = 'none'; 
         }
+        
         function revealSingleRole(i) { 
             const boxes = document.querySelectorAll('#singlePlayerBoxes .player-box'); 
             if(boxes[i].classList.contains('revealed')) return; 
@@ -438,6 +770,7 @@
             else { rt.textContent = singleCurrentWord; rt.className = 'role-text crewmate'; } 
             document.getElementById('singleModal').style.display = 'flex'; 
         }
+        
         function closeSingleModal() { 
             document.getElementById('singleModal').style.display = 'none'; 
             const boxes = document.querySelectorAll('#singlePlayerBoxes .player-box'); 
@@ -446,10 +779,11 @@
             singleRevealedCount++; 
             if(singleRevealedCount === singlePlayerCount) document.getElementById('singleEndButtons').style.display = 'flex'; 
         }
+        
         function newSingleRound() { setupSingleRound(); }
         function backToSingleLobby() { showScreen('singleLobbyScreen'); }
 
-        let playerId = null, playerName = '', roomCode = null, isHost = false, roomRef = null, currentScreen = 'multiMenuScreen';
+        let playerId = null, playerName = '', roomCode = null, isHost = false, roomRef = null, currentScreen = 'homeScreen';
         function generatePlayerId() { return 'player_' + Math.random().toString(36).substr(2, 9); }
         function generateRoomCode() { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = ''; for(let i = 0; i < 4; i++) c += chars.charAt(Math.floor(Math.random() * chars.length)); return c; }
 
