@@ -447,13 +447,11 @@
         }
         .iframe-wrap iframe { width: 100%; height: 100%; border: none; }
 
-        #brGameVideo {
-            width: 100%;
-            max-width: 900px;
-            border: 2px solid #ff8800;
-            border-radius: 4px;
-            background: #000;
-            display: none;
+        #brGuestJumpBtn:active, #brGuestJumpBtn.pressed {
+            background: #ff8800 !important;
+            color: #0a0a0a !important;
+            transform: scale(0.95);
+            box-shadow: 0 0 40px rgba(255,136,0,0.5);
         }
 
         /* Control hints */
@@ -790,17 +788,30 @@
 
         <!-- BRASKET: Online game -->
         <div class="screen" id="brOnlineGame">
-            <div class="iframe-wrap" id="brOnlineIframeWrap" style="display:none;">
-                <iframe id="brGameIframe" allowfullscreen></iframe>
+            <!-- HOST VIEW: game in iframe -->
+            <div id="brHostView" style="display:none; width:100%;">
+                <div class="iframe-wrap" id="brOnlineIframeWrap">
+                    <iframe id="brGameIframe" allowfullscreen></iframe>
+                </div>
+                <p class="status" id="brHostStatus" style="color:#ff8800; font-size:0.6rem; margin-top:8px;">Loading game...</p>
+                <p style="color:#666; font-size:0.6rem; margin-top:4px;" id="brHostTip">Select "2 PLAYER" in the game, then click the game to play.</p>
             </div>
-            <video id="brGameVideo" autoplay playsinline></video>
-            <p class="status waiting" id="brOnlineConnStatus">Setting up connection...</p>
-            <div class="control-hints" id="brOnlineHints">
-                <span class="control-hint">Left player: <kbd>W</kbd></span>
-                <span class="control-hint">Right player: <kbd>UP</kbd></span>
+
+            <!-- GUEST VIEW: controller -->
+            <div id="brGuestView" style="display:none; width:100%;">
+                <h2 style="color:#ff8800; font-size:0.8rem; margin-bottom:16px;">CONTROLLER</h2>
+                <p style="color:#888; font-size:0.75rem; margin-bottom:8px;">You play the <span id="brGuestSideLabel" style="color:#ff8800; font-weight:bold;">LEFT</span> side</p>
+                <p style="color:#666; font-size:0.7rem; margin-bottom:24px;">Watch the game on your host's screen (Discord / FaceTime / screen share)</p>
+                <div style="margin:20px 0;">
+                    <button id="brGuestJumpBtn" style="width:180px; height:180px; border-radius:50%; border:4px solid #ff8800; background:rgba(255,136,0,0.08); color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.7rem; cursor:pointer; transition:all 0.15s; user-select:none; -webkit-user-select:none; touch-action:manipulation;">
+                        JUMP
+                    </button>
+                </div>
+                <p style="color:#555; font-size:0.6rem;">or press <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.45rem;" id="brGuestKeyHint">W</kbd> on keyboard</p>
+                <p class="status" id="brGuestStatus" style="color:#00ff41; font-size:0.55rem; margin-top:12px;">Connected to host</p>
             </div>
-            <p style="color:#888; font-size:0.65rem; margin-top:4px;" id="brOnlineTip"></p>
-            <button class="btn btn-pink btn-small" onclick="brLeaveOnlineGame()" style="margin-top:8px;">LEAVE</button>
+
+            <button class="btn btn-pink btn-small" onclick="brLeaveOnlineGame()" style="margin-top:12px;">LEAVE</button>
         </div>
     </div>
 
@@ -1151,7 +1162,7 @@
     }
 
     // ============================================================
-    // BRASKET HANDOM: ONLINE (WebRTC + Real Game)
+    // BRASKET HANDOM: ONLINE (Firebase Input Relay)
     // ============================================================
     let brOnlineSide = 'left';
     let brOnlinePlayerId = null;
@@ -1159,65 +1170,38 @@
     let brOnlineRoomCode = null;
     let brOnlineIsHost = false;
     let brOnlineRoomRef = null;
-    let brPeerConn = null;
-    let brDataChannel = null;
     let brGameIframe = null;
 
     // =============================================
-    // BRASKET HANDOM - WebRTC + Real Game Engine
+    // BRASKET HANDOM - Real Game + Firebase Input Relay
     // =============================================
-    const BR_CDN = 'https://cdn.jsdelivr.net/gh/bubbls/ruffle@1520d90d7b2994737acd8f7a633d018f63c22ca7/';
+    const BR_GAME_URL = 'https://2048taylorswift.github.io/basketrandom/';
 
     function buildGameHTML() {
         const SE = '<' + '/script>';
         return '<!DOCTYPE html><html><head>' +
             '<meta charset="UTF-8">' +
-            '<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">' +
-            '<base href="' + BR_CDN + '">' +
-            '<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000}' +
-            'canvas{display:block;width:100%;height:100%;object-fit:contain}</style>' +
+            '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no">' +
+            '<base href="' + BR_GAME_URL + '">' +
+            '<link rel="stylesheet" href="style.css">' +
+            '<script>window.addEventListener("keydown",function(e){if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault();},false);' + SE +
             '</head><body>' +
-            '<div id="loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-family:sans-serif;text-align:center;">' +
-            '<p style="font-size:1.2em;">Loading game...</p></div>' +
-            '<script src="box2d.js">' + SE +
-            '<script src="main.js">' + SE +
+            '<script src="box2d.wasm.js">' + SE +
+            '<script src="scripts/supportcheck.js">' + SE +
+            '<script src="scripts/main.js">' + SE +
             '<script>' +
             'window.addEventListener("message",function(e){' +
             'if(e.data&&(e.data.type==="keydown"||e.data.type==="keyup")){' +
-            'document.dispatchEvent(new KeyboardEvent(e.data.type,{' +
+            'var evt=new KeyboardEvent(e.data.type,{' +
             'key:e.data.key,code:e.data.code,' +
             'keyCode:e.data.keyCode,which:e.data.keyCode,' +
             'bubbles:true,cancelable:true' +
-            '}));}});' + SE +
+            '});window.dispatchEvent(evt);document.dispatchEvent(evt);' +
+            '}});' + SE +
             '</body></html>';
     }
 
-    const RTC_CONFIG = {
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-    };
-
-    // Wait for canvas element in iframe
-    function waitForCanvas(iframe) {
-        return new Promise((resolve, reject) => {
-            let attempts = 0;
-            const check = () => {
-                attempts++;
-                try {
-                    const canvas = iframe.contentDocument.querySelector('canvas');
-                    if (canvas) {
-                        setTimeout(() => resolve(canvas), 500);
-                        return;
-                    }
-                } catch(e) {}
-                if (attempts > 150) { reject(new Error('Timeout waiting for game canvas')); return; }
-                setTimeout(check, 200);
-            };
-            check();
-        });
-    }
+    let brGuestInputRef = null;
 
 
 
@@ -1337,7 +1321,7 @@
 
             // Back to lobby
             if (data.status === 'lobby' && currentScreen === 'brOnlineGame') {
-                brCleanupWebRTC();
+                brCleanupGame();
                 showScreen('brOnlineLobby');
             }
         });
@@ -1350,203 +1334,121 @@
         const data = snap.val();
         if (Object.keys(data.players || {}).length < 2) return;
 
-        // Clear any previous WebRTC signaling data
-        await brOnlineRoomRef.child('webrtc').remove();
+        // Clear any previous input data
+        await brOnlineRoomRef.child('guestInput').remove();
         await brOnlineRoomRef.update({ status: 'playing' });
     }
 
     // Both players enter the game screen
     function brStartGameplay() {
         showScreen('brOnlineGame');
-        const statusEl = document.getElementById('brOnlineConnStatus');
-        statusEl.style.display = 'block';
 
         if (brOnlineIsHost) {
-            // Host: load game in iframe and set up WebRTC
-            statusEl.textContent = 'Loading game...';
-            document.getElementById('brOnlineIframeWrap').style.display = 'block';
-            document.getElementById('brGameVideo').style.display = 'none';
-            document.getElementById('brOnlineTip').textContent =
-                'You are the host. Select "2 PLAYER" in the game menu. You play ' +
-                brOnlineSide.toUpperCase() + ' side (' + (brOnlineSide === 'left' ? 'W key' : 'UP arrow') + ').';
+            // HOST: load the actual game in an iframe
+            document.getElementById('brHostView').style.display = 'flex';
+            document.getElementById('brHostView').style.flexDirection = 'column';
+            document.getElementById('brHostView').style.alignItems = 'center';
+            document.getElementById('brGuestView').style.display = 'none';
 
             const iframe = document.getElementById('brGameIframe');
             brGameIframe = iframe;
             iframe.srcdoc = buildGameHTML();
 
-            // Wait for canvas then set up WebRTC
-            waitForCanvas(iframe).then(canvas => {
-                statusEl.textContent = 'Connecting to opponent...';
-                brSetupHostWebRTC(canvas);
-            }).catch(err => {
-                statusEl.textContent = 'Failed to load game. Try leaving and rejoining.';
-                console.error('Canvas wait error:', err);
-            });
-        } else {
-            // Client: show video, set up WebRTC
-            statusEl.textContent = 'Waiting for host to load game...';
-            document.getElementById('brOnlineIframeWrap').style.display = 'none';
-            document.getElementById('brGameVideo').style.display = 'block';
-            document.getElementById('brOnlineTip').textContent =
-                'You are viewing the host\'s game. You play ' +
-                brOnlineSide.toUpperCase() + ' side (' + (brOnlineSide === 'left' ? 'W key' : 'UP arrow') + '). Press your key to play!';
+            // Update status as game loads
+            const statusEl = document.getElementById('brHostStatus');
+            statusEl.textContent = 'Loading game...';
 
-            brSetupClientWebRTC();
+            // Check when game is loaded (canvas appears)
+            let loadChecks = 0;
+            const checkLoaded = () => {
+                loadChecks++;
+                try {
+                    const canvas = iframe.contentDocument.querySelector('canvas');
+                    if (canvas) {
+                        statusEl.textContent = 'Game loaded! Select "2 PLAYER", then click the game to play.';
+                        statusEl.style.color = '#00ff41';
+                        return;
+                    }
+                } catch(e) {}
+                if (loadChecks < 150) setTimeout(checkLoaded, 200);
+                else statusEl.textContent = 'Game may still be loading...';
+            };
+            setTimeout(checkLoaded, 1000);
+
+            // Listen for guest inputs from Firebase
+            brGuestInputRef = brOnlineRoomRef.child('guestInput');
+            brGuestInputRef.on('child_added', (snap) => {
+                const d = snap.val();
+                if (d && brGameIframe && brGameIframe.contentWindow) {
+                    brGameIframe.contentWindow.postMessage({
+                        type: d.t === 'kd' ? 'keydown' : 'keyup',
+                        key: d.key,
+                        code: d.code,
+                        keyCode: d.kc
+                    }, '*');
+                }
+                // Clean up processed input
+                snap.ref.remove();
+            });
+
+        } else {
+            // GUEST: show controller screen
+            document.getElementById('brHostView').style.display = 'none';
+            document.getElementById('brGuestView').style.display = 'flex';
+            document.getElementById('brGuestView').style.flexDirection = 'column';
+            document.getElementById('brGuestView').style.alignItems = 'center';
+
+            // Show which side and which key
+            const sideLabel = document.getElementById('brGuestSideLabel');
+            sideLabel.textContent = brOnlineSide.toUpperCase();
+
+            const keyHint = document.getElementById('brGuestKeyHint');
+            keyHint.textContent = brOnlineSide === 'left' ? 'W' : 'UP';
+
+            // Set up the big JUMP button for touch/click
+            const jumpBtn = document.getElementById('brGuestJumpBtn');
+            const guestKey = brOnlineSide === 'left'
+                ? { key: 'w', code: 'KeyW', kc: 87 }
+                : { key: 'ArrowUp', code: 'ArrowUp', kc: 38 };
+
+            // Touch/mouse events for the big button
+            const sendDown = () => {
+                if (brOnlineRoomRef) {
+                    brOnlineRoomRef.child('guestInput').push({
+                        t: 'kd', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
+                    });
+                }
+                jumpBtn.classList.add('pressed');
+            };
+            const sendUp = () => {
+                if (brOnlineRoomRef) {
+                    brOnlineRoomRef.child('guestInput').push({
+                        t: 'ku', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
+                    });
+                }
+                jumpBtn.classList.remove('pressed');
+            };
+
+            jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); sendDown(); });
+            jumpBtn.addEventListener('mouseup', (e) => { e.preventDefault(); sendUp(); });
+            jumpBtn.addEventListener('mouseleave', (e) => { jumpBtn.classList.remove('pressed'); });
+            jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); sendDown(); });
+            jumpBtn.addEventListener('touchend', (e) => { e.preventDefault(); sendUp(); });
         }
     }
 
-    // Host: Set up WebRTC peer connection and stream game canvas
-    async function brSetupHostWebRTC(canvas) {
-        brPeerConn = new RTCPeerConnection(RTC_CONFIG);
-
-        // Create data channel for receiving client inputs
-        brDataChannel = brPeerConn.createDataChannel('inputs');
-        brDataChannel.onmessage = (e) => {
-            try {
-                const msg = JSON.parse(e.data);
-                if (brGameIframe && brGameIframe.contentWindow) {
-                    brGameIframe.contentWindow.postMessage(msg, '*');
-                }
-            } catch(err) { console.error('Data channel message error:', err); }
-        };
-
-        // Capture game canvas stream and add to peer connection
-        const stream = canvas.captureStream(30);
-        stream.getTracks().forEach(track => brPeerConn.addTrack(track, stream));
-
-        // ICE connection state monitoring
-        brPeerConn.oniceconnectionstatechange = () => {
-            if (!brPeerConn) return;
-            const state = brPeerConn.iceConnectionState;
-            const statusEl = document.getElementById('brOnlineConnStatus');
-            if (state === 'connected' || state === 'completed') {
-                statusEl.textContent = 'Opponent connected!';
-                setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
-            } else if (state === 'failed') {
-                statusEl.textContent = 'Connection failed. Try leaving and rejoining.';
-                statusEl.style.display = 'block';
-            } else if (state === 'disconnected') {
-                statusEl.textContent = 'Opponent disconnected...';
-                statusEl.style.display = 'block';
-            }
-        };
-
-        // Send ICE candidates to Firebase
-        brPeerConn.onicecandidate = (e) => {
-            if (e.candidate && brOnlineRoomRef) {
-                brOnlineRoomRef.child('webrtc/hostCandidates').push(e.candidate.toJSON());
-            }
-        };
-
-        // Create and send offer
-        const offer = await brPeerConn.createOffer();
-        await brPeerConn.setLocalDescription(offer);
-        await brOnlineRoomRef.child('webrtc/offer').set({
-            type: offer.type,
-            sdp: offer.sdp
-        });
-
-        // Listen for client's answer
-        brOnlineRoomRef.child('webrtc/answer').on('value', async (snap) => {
-            const answer = snap.val();
-            if (answer && brPeerConn && brPeerConn.signalingState !== 'stable') {
-                try {
-                    await brPeerConn.setRemoteDescription(new RTCSessionDescription(answer));
-                } catch(e) { console.error('Error setting answer:', e); }
-            }
-        });
-
-        // Listen for client's ICE candidates
-        brOnlineRoomRef.child('webrtc/clientCandidates').on('child_added', async (snap) => {
-            const candidate = snap.val();
-            if (candidate && brPeerConn) {
-                try {
-                    await brPeerConn.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch(e) { console.error('Error adding client ICE candidate:', e); }
-            }
-        });
-    }
-
-    // Client: Set up WebRTC peer connection to receive game stream
-    function brSetupClientWebRTC() {
-        brPeerConn = new RTCPeerConnection(RTC_CONFIG);
-
-        // Receive video stream from host
-        brPeerConn.ontrack = (e) => {
-            const video = document.getElementById('brGameVideo');
-            video.srcObject = e.streams[0];
-            video.play().catch(() => {});
-        };
-
-        // Receive data channel (for future use)
-        brPeerConn.ondatachannel = (e) => {
-            brDataChannel = e.channel;
-        };
-
-        // ICE connection state monitoring
-        brPeerConn.oniceconnectionstatechange = () => {
-            if (!brPeerConn) return;
-            const state = brPeerConn.iceConnectionState;
-            const statusEl = document.getElementById('brOnlineConnStatus');
-            if (state === 'connected' || state === 'completed') {
-                statusEl.textContent = 'Connected!';
-                setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
-            } else if (state === 'failed') {
-                statusEl.textContent = 'Connection failed. Try leaving and rejoining.';
-                statusEl.style.display = 'block';
-            } else if (state === 'disconnected') {
-                statusEl.textContent = 'Host disconnected...';
-                statusEl.style.display = 'block';
-            }
-        };
-
-        // Send ICE candidates to Firebase
-        brPeerConn.onicecandidate = (e) => {
-            if (e.candidate && brOnlineRoomRef) {
-                brOnlineRoomRef.child('webrtc/clientCandidates').push(e.candidate.toJSON());
-            }
-        };
-
-        // Listen for host's offer
-        brOnlineRoomRef.child('webrtc/offer').on('value', async (snap) => {
-            const offer = snap.val();
-            if (offer && brPeerConn && brPeerConn.signalingState === 'stable') {
-                try {
-                    await brPeerConn.setRemoteDescription(new RTCSessionDescription(offer));
-                    const answer = await brPeerConn.createAnswer();
-                    await brPeerConn.setLocalDescription(answer);
-                    await brOnlineRoomRef.child('webrtc/answer').set({
-                        type: answer.type,
-                        sdp: answer.sdp
-                    });
-                } catch(e) { console.error('Error handling offer:', e); }
-            }
-        });
-
-        // Listen for host's ICE candidates
-        brOnlineRoomRef.child('webrtc/hostCandidates').on('child_added', async (snap) => {
-            const candidate = snap.val();
-            if (candidate && brPeerConn) {
-                try {
-                    await brPeerConn.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch(e) { console.error('Error adding host ICE candidate:', e); }
-            }
-        });
-    }
-
-    // Clean up WebRTC connection
-    function brCleanupWebRTC() {
-        if (brDataChannel) { brDataChannel.close(); brDataChannel = null; }
-        if (brPeerConn) { brPeerConn.close(); brPeerConn = null; }
+    // Clean up game resources
+    function brCleanupGame() {
+        if (brGuestInputRef) { brGuestInputRef.off(); brGuestInputRef = null; }
         brGameIframe = null;
         const iframe = document.getElementById('brGameIframe');
         if (iframe) iframe.srcdoc = '';
-        const video = document.getElementById('brGameVideo');
-        if (video) { video.srcObject = null; video.style.display = 'none'; }
+        document.getElementById('brHostView').style.display = 'none';
+        document.getElementById('brGuestView').style.display = 'none';
     }
 
     function brCleanup() {
-        brCleanupWebRTC();
+        brCleanupGame();
         if (brOnlineRoomRef) brOnlineRoomRef.off();
         brOnlineRoomRef = null;
         brOnlinePlayerId = null;
@@ -1581,40 +1483,38 @@
     }
 
     // ============================================================
-    // INPUT HANDLING (Client sends keys via WebRTC data channel)
+    // INPUT HANDLING (Guest sends keys via Firebase)
     // ============================================================
     document.addEventListener('keydown', (e) => {
-        if (currentScreen !== 'brOnlineGame') return;
+        if (currentScreen !== 'brOnlineGame' || brOnlineIsHost) return;
 
-        // Client: send key presses to host via data channel
-        if (!brOnlineIsHost && brDataChannel && brDataChannel.readyState === 'open') {
-            const key = e.key;
-            if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
-                e.preventDefault();
-                brDataChannel.send(JSON.stringify({
-                    type: 'keydown',
-                    key: e.key,
-                    code: e.code,
-                    keyCode: e.keyCode
-                }));
+        const key = e.key;
+        if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
+            e.preventDefault();
+            if (brOnlineRoomRef) {
+                const guestKey = brOnlineSide === 'left'
+                    ? { key: 'w', code: 'KeyW', kc: 87 }
+                    : { key: 'ArrowUp', code: 'ArrowUp', kc: 38 };
+                brOnlineRoomRef.child('guestInput').push({
+                    t: 'kd', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
+                });
             }
         }
     });
 
     document.addEventListener('keyup', (e) => {
-        if (currentScreen !== 'brOnlineGame') return;
+        if (currentScreen !== 'brOnlineGame' || brOnlineIsHost) return;
 
-        // Client: send key releases to host via data channel
-        if (!brOnlineIsHost && brDataChannel && brDataChannel.readyState === 'open') {
-            const key = e.key;
-            if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
-                e.preventDefault();
-                brDataChannel.send(JSON.stringify({
-                    type: 'keyup',
-                    key: e.key,
-                    code: e.code,
-                    keyCode: e.keyCode
-                }));
+        const key = e.key;
+        if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
+            e.preventDefault();
+            if (brOnlineRoomRef) {
+                const guestKey = brOnlineSide === 'left'
+                    ? { key: 'w', code: 'KeyW', kc: 87 }
+                    : { key: 'ArrowUp', code: 'ArrowUp', kc: 38 };
+                brOnlineRoomRef.child('guestInput').push({
+                    t: 'ku', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
+                });
             }
         }
     });
