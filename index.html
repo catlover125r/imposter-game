@@ -447,12 +447,6 @@
         }
         .iframe-wrap iframe { width: 100%; height: 100%; border: none; }
 
-        #brGuestJumpBtn:active, #brGuestJumpBtn.pressed {
-            background: #ff8800 !important;
-            color: #0a0a0a !important;
-            transform: scale(0.95);
-            box-shadow: 0 0 40px rgba(255,136,0,0.5);
-        }
 
         /* Control hints */
         .control-hints {
@@ -788,30 +782,16 @@
 
         <!-- BRASKET: Online game -->
         <div class="screen" id="brOnlineGame">
-            <!-- HOST VIEW: game in iframe -->
-            <div id="brHostView" style="display:none; width:100%;">
-                <div class="iframe-wrap" id="brOnlineIframeWrap">
-                    <iframe id="brGameIframe" allowfullscreen></iframe>
-                </div>
-                <p class="status" id="brHostStatus" style="color:#ff8800; font-size:0.6rem; margin-top:8px;">Loading game...</p>
-                <p style="color:#666; font-size:0.6rem; margin-top:4px;" id="brHostTip">Select "2 PLAYER" in the game, then click the game to play.</p>
+            <div class="iframe-wrap" id="brOnlineIframeWrap">
+                <iframe id="brGameIframe" allowfullscreen></iframe>
             </div>
-
-            <!-- GUEST VIEW: controller -->
-            <div id="brGuestView" style="display:none; width:100%;">
-                <h2 style="color:#ff8800; font-size:0.8rem; margin-bottom:16px;">CONTROLLER</h2>
-                <p style="color:#888; font-size:0.75rem; margin-bottom:8px;">You play the <span id="brGuestSideLabel" style="color:#ff8800; font-weight:bold;">LEFT</span> side</p>
-                <p style="color:#666; font-size:0.7rem; margin-bottom:24px;">Watch the game on your host's screen (Discord / FaceTime / screen share)</p>
-                <div style="margin:20px 0;">
-                    <button id="brGuestJumpBtn" style="width:180px; height:180px; border-radius:50%; border:4px solid #ff8800; background:rgba(255,136,0,0.08); color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.7rem; cursor:pointer; transition:all 0.15s; user-select:none; -webkit-user-select:none; touch-action:manipulation;">
-                        JUMP
-                    </button>
-                </div>
-                <p style="color:#555; font-size:0.6rem;">or press <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.45rem;" id="brGuestKeyHint">W</kbd> on keyboard</p>
-                <p class="status" id="brGuestStatus" style="color:#00ff41; font-size:0.55rem; margin-top:12px;">Connected to host</p>
+            <p class="status" id="brOnlineStatus" style="color:#ff8800; font-size:0.55rem; margin-top:6px;">Loading game...</p>
+            <p style="color:#666; font-size:0.55rem; margin-top:2px;" id="brOnlineTip"></p>
+            <div class="control-hints" style="margin-top:4px;">
+                <span class="control-hint">Left: <kbd>W</kbd></span>
+                <span class="control-hint">Right: <kbd>UP</kbd></span>
             </div>
-
-            <button class="btn btn-pink btn-small" onclick="brLeaveOnlineGame()" style="margin-top:12px;">LEAVE</button>
+            <button class="btn btn-pink btn-small" onclick="brLeaveOnlineGame()" style="margin-top:8px;">LEAVE</button>
         </div>
     </div>
 
@@ -1173,35 +1153,73 @@
     let brGameIframe = null;
 
     // =============================================
-    // BRASKET HANDOM - Real Game + Firebase Input Relay
+    // BRASKET HANDOM - Real Game + Firebase Input Sync
     // =============================================
     const BR_GAME_URL = 'https://2048taylorswift.github.io/basketrandom/';
 
     function buildGameHTML() {
         const SE = '<' + '/script>';
+        const BASE = BR_GAME_URL;
+        const ORIGIN = 'https://2048taylorswift.github.io';
         return '<!DOCTYPE html><html><head>' +
             '<meta charset="UTF-8">' +
             '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no">' +
-            '<base href="' + BR_GAME_URL + '">' +
+            '<base href="' + BASE + '">' +
             '<link rel="stylesheet" href="style.css">' +
-            '<script>window.addEventListener("keydown",function(e){if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault();},false);' + SE +
+            '<script>' +
+            // Fix URL resolution for srcdoc context
+            '(function(){' +
+            'var B="' + BASE + '",O="' + ORIGIN + '";' +
+            'function fix(u){' +
+            'if(typeof u!=="string")return u;' +
+            'if(u.startsWith("http")||u.startsWith("blob:")||u.startsWith("data:"))return u;' +
+            'if(u.startsWith("about:"))u=u.substring(6);' +
+            'if(u.startsWith("/"))return O+u;' +
+            'try{return new URL(u,B).href}catch(e){return u}' +
+            '}' +
+            'var oF=window.fetch;' +
+            'window.fetch=function(r,i){' +
+            'if(typeof r==="string")r=fix(r);' +
+            'else if(r&&r.url)try{r=new Request(fix(r.url),r)}catch(e){}' +
+            'return oF.call(this,r,i)};' +
+            'var oX=XMLHttpRequest.prototype.open;' +
+            'XMLHttpRequest.prototype.open=function(m,u){' +
+            'arguments[1]=fix(u);return oX.apply(this,arguments)};' +
+            // Prevent arrow/space defaults
+            'window.addEventListener("keydown",function(e){' +
+            'if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault()},false);' +
+            // Listen for postMessage to inject opponent's keyboard events
+            'window.addEventListener("message",function(e){' +
+            'if(e.data&&e.data.dir==="toGame"){' +
+            'var evt=new KeyboardEvent(e.data.type,{' +
+            'key:e.data.key,code:e.data.code,' +
+            'keyCode:e.data.kc,which:e.data.kc,' +
+            'bubbles:true,cancelable:true});' +
+            'document.dispatchEvent(evt);window.dispatchEvent(evt);' +
+            'var c=document.querySelector("canvas");if(c)c.dispatchEvent(evt)' +
+            '}});' +
+            // Send real (trusted) keypresses back to parent for relay
+            'window.addEventListener("keydown",function(e){' +
+            'if(!e.isTrusted)return;' +
+            'if([87,38,32].indexOf(e.keyCode)>-1){' +
+            'parent.postMessage({dir:"toParent",type:"keydown",' +
+            'key:e.key,code:e.code,kc:e.keyCode},"*")}},true);' +
+            'window.addEventListener("keyup",function(e){' +
+            'if(!e.isTrusted)return;' +
+            'if([87,38,32].indexOf(e.keyCode)>-1){' +
+            'parent.postMessage({dir:"toParent",type:"keyup",' +
+            'key:e.key,code:e.code,kc:e.keyCode},"*")}},true);' +
+            '})();' + SE +
             '</head><body>' +
             '<script src="box2d.wasm.js">' + SE +
             '<script src="scripts/supportcheck.js">' + SE +
+            '<script src="scripts/offlineclient.js">' + SE +
             '<script src="scripts/main.js">' + SE +
-            '<script>' +
-            'window.addEventListener("message",function(e){' +
-            'if(e.data&&(e.data.type==="keydown"||e.data.type==="keyup")){' +
-            'var evt=new KeyboardEvent(e.data.type,{' +
-            'key:e.data.key,code:e.data.code,' +
-            'keyCode:e.data.keyCode,which:e.data.keyCode,' +
-            'bubbles:true,cancelable:true' +
-            '});window.dispatchEvent(evt);document.dispatchEvent(evt);' +
-            '}});' + SE +
             '</body></html>';
     }
 
-    let brGuestInputRef = null;
+    let brInputListenerRef = null;
+    let brMessageHandler = null;
 
 
 
@@ -1334,117 +1352,89 @@
         const data = snap.val();
         if (Object.keys(data.players || {}).length < 2) return;
 
-        // Clear any previous input data
-        await brOnlineRoomRef.child('guestInput').remove();
+        // Clear previous input data
+        await brOnlineRoomRef.child('inputs').remove();
         await brOnlineRoomRef.update({ status: 'playing' });
     }
 
-    // Both players enter the game screen
+    // Both players load the game and set up input sync
     function brStartGameplay() {
         showScreen('brOnlineGame');
 
-        if (brOnlineIsHost) {
-            // HOST: load the actual game in an iframe
-            document.getElementById('brHostView').style.display = 'flex';
-            document.getElementById('brHostView').style.flexDirection = 'column';
-            document.getElementById('brHostView').style.alignItems = 'center';
-            document.getElementById('brGuestView').style.display = 'none';
+        const mySide = brOnlineSide;
+        const opponentSide = mySide === 'left' ? 'right' : 'left';
 
-            const iframe = document.getElementById('brGameIframe');
-            brGameIframe = iframe;
-            iframe.srcdoc = buildGameHTML();
+        // Load the actual Basket Random game in iframe (same for both players)
+        const iframe = document.getElementById('brGameIframe');
+        brGameIframe = iframe;
+        iframe.srcdoc = buildGameHTML();
 
-            // Update status as game loads
-            const statusEl = document.getElementById('brHostStatus');
-            statusEl.textContent = 'Loading game...';
+        const statusEl = document.getElementById('brOnlineStatus');
+        statusEl.textContent = 'Loading game...';
+        statusEl.style.color = '#ff8800';
 
-            // Check when game is loaded (canvas appears)
-            let loadChecks = 0;
-            const checkLoaded = () => {
-                loadChecks++;
-                try {
-                    const canvas = iframe.contentDocument.querySelector('canvas');
-                    if (canvas) {
-                        statusEl.textContent = 'Game loaded! Select "2 PLAYER", then click the game to play.';
-                        statusEl.style.color = '#00ff41';
-                        return;
-                    }
-                } catch(e) {}
-                if (loadChecks < 150) setTimeout(checkLoaded, 200);
-                else statusEl.textContent = 'Game may still be loading...';
-            };
-            setTimeout(checkLoaded, 1000);
+        document.getElementById('brOnlineTip').textContent =
+            'You play ' + mySide.toUpperCase() + ' (' +
+            (mySide === 'left' ? 'W key' : 'UP arrow') +
+            '). Select "2 PLAYER" in the game, then click it to play!';
 
-            // Listen for guest inputs from Firebase
-            brGuestInputRef = brOnlineRoomRef.child('guestInput');
-            brGuestInputRef.on('child_added', (snap) => {
-                const d = snap.val();
-                if (d && brGameIframe && brGameIframe.contentWindow) {
-                    brGameIframe.contentWindow.postMessage({
-                        type: d.t === 'kd' ? 'keydown' : 'keyup',
-                        key: d.key,
-                        code: d.code,
-                        keyCode: d.kc
-                    }, '*');
+        // Check when game loads
+        let checks = 0;
+        const checkLoaded = () => {
+            checks++;
+            try {
+                if (iframe.contentDocument && iframe.contentDocument.querySelector('canvas')) {
+                    statusEl.textContent = 'Game loaded! Select "2 PLAYER" then click the game.';
+                    statusEl.style.color = '#00ff41';
+                    return;
                 }
-                // Clean up processed input
-                snap.ref.remove();
-            });
+            } catch(e) {}
+            if (checks < 150) setTimeout(checkLoaded, 200);
+            else statusEl.textContent = 'Game may still be loading... try refreshing.';
+        };
+        setTimeout(checkLoaded, 1000);
 
-        } else {
-            // GUEST: show controller screen
-            document.getElementById('brHostView').style.display = 'none';
-            document.getElementById('brGuestView').style.display = 'flex';
-            document.getElementById('brGuestView').style.flexDirection = 'column';
-            document.getElementById('brGuestView').style.alignItems = 'center';
+        // RELAY MY INPUTS TO OPPONENT:
+        // When I press a key in my iframe, it sends a postMessage to the parent (this page).
+        // This page writes it to Firebase under my side, so the opponent can pick it up.
+        brMessageHandler = function(e) {
+            if (e.data && e.data.dir === 'toParent' && brOnlineRoomRef) {
+                brOnlineRoomRef.child('inputs/' + mySide).push({
+                    t: e.data.type === 'keydown' ? 'kd' : 'ku',
+                    key: e.data.key,
+                    code: e.data.code,
+                    kc: e.data.kc
+                });
+            }
+        };
+        window.addEventListener('message', brMessageHandler);
 
-            // Show which side and which key
-            const sideLabel = document.getElementById('brGuestSideLabel');
-            sideLabel.textContent = brOnlineSide.toUpperCase();
-
-            const keyHint = document.getElementById('brGuestKeyHint');
-            keyHint.textContent = brOnlineSide === 'left' ? 'W' : 'UP';
-
-            // Set up the big JUMP button for touch/click
-            const jumpBtn = document.getElementById('brGuestJumpBtn');
-            const guestKey = brOnlineSide === 'left'
-                ? { key: 'w', code: 'KeyW', kc: 87 }
-                : { key: 'ArrowUp', code: 'ArrowUp', kc: 38 };
-
-            // Touch/mouse events for the big button
-            const sendDown = () => {
-                if (brOnlineRoomRef) {
-                    brOnlineRoomRef.child('guestInput').push({
-                        t: 'kd', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
-                    });
-                }
-                jumpBtn.classList.add('pressed');
-            };
-            const sendUp = () => {
-                if (brOnlineRoomRef) {
-                    brOnlineRoomRef.child('guestInput').push({
-                        t: 'ku', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
-                    });
-                }
-                jumpBtn.classList.remove('pressed');
-            };
-
-            jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); sendDown(); });
-            jumpBtn.addEventListener('mouseup', (e) => { e.preventDefault(); sendUp(); });
-            jumpBtn.addEventListener('mouseleave', (e) => { jumpBtn.classList.remove('pressed'); });
-            jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); sendDown(); });
-            jumpBtn.addEventListener('touchend', (e) => { e.preventDefault(); sendUp(); });
-        }
+        // RECEIVE OPPONENT'S INPUTS:
+        // Listen on Firebase for the opponent's side, inject into my iframe
+        brInputListenerRef = brOnlineRoomRef.child('inputs/' + opponentSide);
+        brInputListenerRef.on('child_added', (snap) => {
+            const d = snap.val();
+            if (d && brGameIframe && brGameIframe.contentWindow) {
+                brGameIframe.contentWindow.postMessage({
+                    dir: 'toGame',
+                    type: d.t === 'kd' ? 'keydown' : 'keyup',
+                    key: d.key,
+                    code: d.code,
+                    kc: d.kc
+                }, '*');
+            }
+            // Clean up processed input
+            snap.ref.remove();
+        });
     }
 
     // Clean up game resources
     function brCleanupGame() {
-        if (brGuestInputRef) { brGuestInputRef.off(); brGuestInputRef = null; }
+        if (brInputListenerRef) { brInputListenerRef.off(); brInputListenerRef = null; }
+        if (brMessageHandler) { window.removeEventListener('message', brMessageHandler); brMessageHandler = null; }
         brGameIframe = null;
         const iframe = document.getElementById('brGameIframe');
         if (iframe) iframe.srcdoc = '';
-        document.getElementById('brHostView').style.display = 'none';
-        document.getElementById('brGuestView').style.display = 'none';
     }
 
     function brCleanup() {
@@ -1481,43 +1471,6 @@
     function brLeaveOnlineGame() {
         brLeaveRoom();
     }
-
-    // ============================================================
-    // INPUT HANDLING (Guest sends keys via Firebase)
-    // ============================================================
-    document.addEventListener('keydown', (e) => {
-        if (currentScreen !== 'brOnlineGame' || brOnlineIsHost) return;
-
-        const key = e.key;
-        if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
-            e.preventDefault();
-            if (brOnlineRoomRef) {
-                const guestKey = brOnlineSide === 'left'
-                    ? { key: 'w', code: 'KeyW', kc: 87 }
-                    : { key: 'ArrowUp', code: 'ArrowUp', kc: 38 };
-                brOnlineRoomRef.child('guestInput').push({
-                    t: 'kd', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
-                });
-            }
-        }
-    });
-
-    document.addEventListener('keyup', (e) => {
-        if (currentScreen !== 'brOnlineGame' || brOnlineIsHost) return;
-
-        const key = e.key;
-        if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
-            e.preventDefault();
-            if (brOnlineRoomRef) {
-                const guestKey = brOnlineSide === 'left'
-                    ? { key: 'w', code: 'KeyW', kc: 87 }
-                    : { key: 'ArrowUp', code: 'ArrowUp', kc: 38 };
-                brOnlineRoomRef.child('guestInput').push({
-                    t: 'ku', key: guestKey.key, code: guestKey.code, kc: guestKey.kc
-                });
-            }
-        }
-    });
 
     // ============================================================
     // INIT
