@@ -1158,90 +1158,99 @@
     const BR_GAME_URL = 'https://2048taylorswift.github.io/basketrandom/';
 
     async function buildGameHTML() {
-        const SE = '<' + '/script>';
         const BASE = BR_GAME_URL;
         const ORIGIN = 'https://2048taylorswift.github.io';
 
-        // Fetch main.js and patch location.origin / self.location references
-        // so the Construct 3 runtime can resolve URLs correctly in srcdoc
-        let mainJs = '';
-        try {
-            const resp = await fetch(BASE + 'scripts/main.js');
-            mainJs = await resp.text();
-            // Replace all location.origin with the actual origin string
-            mainJs = mainJs.replace(/location\.origin/g, '("' + ORIGIN + '")');
-            // Replace self.location.href references
-            mainJs = mainJs.replace(/self\.location\.href/g, '("' + BASE + 'index.html")');
-            // Escape closing script tags inside the inlined code
-            mainJs = mainJs.replace(/<\/script>/gi, '<\\/script>');
-        } catch(e) {
-            console.error('Failed to fetch main.js:', e);
-        }
+        // Fetch ALL game scripts in parallel so we can inline them
+        const scriptURLs = [
+            'box2d.wasm.js',
+            'scripts/supportcheck.js',
+            'scripts/offlineclient.js',
+            'scripts/main.js'
+        ];
+        const scripts = {};
+        const results = await Promise.all(
+            scriptURLs.map(u => fetch(BASE + u).then(r => r.text()).catch(e => { console.error('Failed to fetch ' + u, e); return ''; }))
+        );
+        scriptURLs.forEach((u, i) => { scripts[u] = results[i]; });
 
-        return '<!DOCTYPE html><html><head>' +
-            '<meta charset="UTF-8">' +
-            '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no">' +
-            '<base href="' + BASE + '">' +
-            '<link rel="stylesheet" href="style.css">' +
-            '<script>' +
-            '(function(){' +
-            'var B="' + BASE + '",O="' + ORIGIN + '";' +
-            // Fix URL resolution for fetch/XHR
-            'function fix(u){' +
-            'if(typeof u!=="string")return u;' +
-            'if(u.startsWith("http")||u.startsWith("blob:")||u.startsWith("data:"))return u;' +
-            'if(u.startsWith("/"))return O+u;' +
-            'try{return new URL(u,B).href}catch(e){return u}' +
-            '}' +
-            'var oF=window.fetch;' +
-            'window.fetch=function(r,i){' +
-            'if(typeof r==="string")r=fix(r);' +
-            'else if(r&&r.url)try{r=new Request(fix(r.url),r)}catch(e){}' +
-            'return oF.call(this,r,i)};' +
-            'var oX=XMLHttpRequest.prototype.open;' +
-            'XMLHttpRequest.prototype.open=function(m,u){' +
-            'arguments[1]=fix(u);return oX.apply(this,arguments)};' +
-            // Override Worker constructor: create blob workers that importScripts from game URL
-            'var _W=window.Worker;' +
-            'window.Worker=function(u,opts){' +
-            'var absU;try{absU=new URL(u,B).href}catch(e){absU=u}' +
-            'var pfx="var _f=self.fetch;self.fetch=function(r,i){if(typeof r===\\"string\\"&&!r.startsWith(\\"http\\")&&!r.startsWith(\\"blob:\\")&&!r.startsWith(\\"data:\\"))try{r=new URL(r,\\""+B+"\\").href}catch(e){}return _f.call(this,r,i)};";' +
-            'var code=pfx+"importScripts(\\""+absU+"\\");";' +
-            'var blob=new Blob([code],{type:"application/javascript"});' +
-            'return new _W(URL.createObjectURL(blob),opts)};' +
-            'window.Worker.prototype=_W.prototype;' +
-            // Prevent arrow/space defaults
-            'window.addEventListener("keydown",function(e){' +
-            'if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault()},false);' +
-            // Listen for postMessage to inject opponent's keyboard events
-            'window.addEventListener("message",function(e){' +
-            'if(e.data&&e.data.dir==="toGame"){' +
-            'var evt=new KeyboardEvent(e.data.type,{' +
-            'key:e.data.key,code:e.data.code,' +
-            'keyCode:e.data.kc,which:e.data.kc,' +
-            'bubbles:true,cancelable:true});' +
-            'document.dispatchEvent(evt);window.dispatchEvent(evt);' +
-            'var c=document.querySelector("canvas");if(c)c.dispatchEvent(evt)' +
-            '}});' +
-            // Send real (trusted) keypresses back to parent for relay
-            'window.addEventListener("keydown",function(e){' +
-            'if(!e.isTrusted)return;' +
-            'if([87,38,32].indexOf(e.keyCode)>-1){' +
-            'parent.postMessage({dir:"toParent",type:"keydown",' +
-            'key:e.key,code:e.code,kc:e.keyCode},"*")}},true);' +
-            'window.addEventListener("keyup",function(e){' +
-            'if(!e.isTrusted)return;' +
-            'if([87,38,32].indexOf(e.keyCode)>-1){' +
-            'parent.postMessage({dir:"toParent",type:"keyup",' +
-            'key:e.key,code:e.code,kc:e.keyCode},"*")}},true);' +
-            '})();' + SE +
-            '</head><body>' +
-            '<script src="box2d.wasm.js">' + SE +
-            '<script src="scripts/supportcheck.js">' + SE +
-            '<script src="scripts/offlineclient.js">' + SE +
-            // Inline the patched main.js instead of loading via src
-            '<script>' + mainJs + SE +
-            '</body></html>';
+        // Patch main.js: replace location.origin and self.location references
+        let mainJs = scripts['scripts/main.js'];
+        mainJs = mainJs.replace(/location\.origin/g, '("' + ORIGIN + '")');
+        mainJs = mainJs.replace(/self\.location\.href/g, '("' + BASE + 'index.html")');
+
+        // Escape closing script tags in all inlined scripts
+        function esc(code) { return code.replace(/<\/script/gi, '<\\/script'); }
+
+        // Build complete HTML document
+        return `<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no">
+<base href="${BASE}">
+<link rel="stylesheet" href="style.css">
+<script>
+// === OVERRIDES (runs before game scripts) ===
+(function(){
+var B="${BASE}",O="${ORIGIN}";
+
+// Report errors to parent
+window.onerror=function(m,s,l,c,e){parent.postMessage({dir:"error",msg:m,src:s,line:l},"*")};
+
+// Fix URL resolution for fetch/XHR
+function fix(u){
+if(typeof u!=="string")return u;
+if(u.startsWith("http")||u.startsWith("blob:")||u.startsWith("data:"))return u;
+if(u.startsWith("/"))return O+u;
+try{return new URL(u,B).href}catch(e){return u}
+}
+var oF=window.fetch;
+window.fetch=function(r,i){
+if(typeof r==="string")r=fix(r);
+else if(r&&r.url)try{r=new Request(fix(r.url),r)}catch(e){}
+return oF.call(this,r,i)};
+var oX=XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open=function(m,u){
+arguments[1]=fix(u);return oX.apply(this,arguments)};
+
+// Override Worker: use blob + importScripts to load cross-origin worker scripts
+var _W=window.Worker;
+window.Worker=function(u,opts){
+var absU;try{absU=new URL(u,B).href}catch(e){absU=u}
+if(opts&&opts.type==="module"){return new _W(absU,opts)}
+var code='var _f=self.fetch;self.fetch=function(r,i){if(typeof r==="string"&&!r.startsWith("http")&&!r.startsWith("blob:")&&!r.startsWith("data:"))try{r=new URL(r,"'+B+'").href}catch(e){}return _f.call(this,r,i)};importScripts("'+absU+'");';
+var blob=new Blob([code],{type:"application/javascript"});
+return new _W(URL.createObjectURL(blob),opts)};
+window.Worker.prototype=_W.prototype;
+
+// Prevent arrow/space scroll
+window.addEventListener("keydown",function(e){
+if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault()},false);
+
+// Receive opponent's keyboard events from parent
+window.addEventListener("message",function(e){
+if(e.data&&e.data.dir==="toGame"){
+var evt=new KeyboardEvent(e.data.type,{
+key:e.data.key,code:e.data.code,
+keyCode:e.data.kc,which:e.data.kc,
+bubbles:true,cancelable:true});
+document.dispatchEvent(evt);window.dispatchEvent(evt);
+var c=document.querySelector("canvas");if(c)c.dispatchEvent(evt)}});
+
+// Send real keypresses to parent for relay to opponent
+["keydown","keyup"].forEach(function(t){
+window.addEventListener(t,function(e){
+if(!e.isTrusted)return;
+if([87,38,32].indexOf(e.keyCode)>-1){
+parent.postMessage({dir:"toParent",type:t,
+key:e.key,code:e.code,kc:e.keyCode},"*")}},true)});
+})();
+<\/script>
+</head><body>
+<script>${esc(scripts['box2d.wasm.js'])}<\/script>
+<script>${esc(scripts['scripts/supportcheck.js'])}<\/script>
+<script>${esc(scripts['scripts/offlineclient.js'])}<\/script>
+<script>${esc(mainJs)}<\/script>
+</body></html>`;
     }
 
     let brInputListenerRef = null;
@@ -1399,7 +1408,10 @@
         statusEl.style.color = '#ff8800';
 
         const gameHTML = await buildGameHTML();
-        iframe.srcdoc = gameHTML;
+        // Use blob URL instead of srcdoc for proper origin/Worker support
+        const blob = new Blob([gameHTML], { type: 'text/html' });
+        const blobUrl = URL.createObjectURL(blob);
+        iframe.src = blobUrl;
 
         statusEl.textContent = 'Loading game...';
 
@@ -1407,6 +1419,16 @@
             'You play ' + mySide.toUpperCase() + ' (' +
             (mySide === 'left' ? 'W key' : 'UP arrow') +
             '). Select "2 PLAYER" in the game, then click it to play!';
+
+        // Listen for error reports from inside the game iframe
+        const errorHandler = function(e) {
+            if (e.data && e.data.dir === 'error') {
+                console.error('[Game iframe error]', e.data.msg, e.data.src, 'line:', e.data.line);
+                statusEl.textContent = 'Error: ' + (e.data.msg || 'unknown').substring(0, 80);
+                statusEl.style.color = '#ff0000';
+            }
+        };
+        window.addEventListener('message', errorHandler);
 
         // Check when game loads
         let checks = 0;
@@ -1416,11 +1438,15 @@
                 if (iframe.contentDocument && iframe.contentDocument.querySelector('canvas')) {
                     statusEl.textContent = 'Game loaded! Select "2 PLAYER" then click the game.';
                     statusEl.style.color = '#00ff41';
+                    window.removeEventListener('message', errorHandler);
                     return;
                 }
             } catch(e) {}
             if (checks < 150) setTimeout(checkLoaded, 200);
-            else statusEl.textContent = 'Game may still be loading... try refreshing.';
+            else {
+                statusEl.textContent = 'Game may still be loading... try refreshing.';
+                window.removeEventListener('message', errorHandler);
+            }
         };
         setTimeout(checkLoaded, 1000);
 
@@ -1462,9 +1488,12 @@
     function brCleanupGame() {
         if (brInputListenerRef) { brInputListenerRef.off(); brInputListenerRef = null; }
         if (brMessageHandler) { window.removeEventListener('message', brMessageHandler); brMessageHandler = null; }
-        brGameIframe = null;
         const iframe = document.getElementById('brGameIframe');
-        if (iframe) iframe.srcdoc = '';
+        if (iframe && iframe.src && iframe.src.startsWith('blob:')) {
+            URL.revokeObjectURL(iframe.src);
+        }
+        if (iframe) iframe.src = '';
+        brGameIframe = null;
     }
 
     function brCleanup() {
