@@ -3,12 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Imposter Game - Free Online Party Game for Friends & Family</title>
-    <meta name="description" content="Play Imposter, the free online social deduction party game. One player is secretly the imposter - can you find them? Works on any device, no app download needed.">
+    <title>Game Hub - Play Free Games Online</title>
+    <meta name="description" content="Play free online games with friends. Imposter party game, Brasket Handom basketball, and more!">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; color: white; }
-        
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        /* Scanline overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.08) 2px,
+                rgba(0,0,0,0.08) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        h1, h2, h3, .retro-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+
         /* Ad containers */
         .ad-wrapper {
             position: fixed;
@@ -26,537 +54,630 @@
         @media (max-width: 1200px) {
             .ad-wrapper { display: none; }
         }
-        
-        .container { text-align: center; padding: 20px; width: 100%; max-width: 700px; }
-        h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
-        h2 { font-size: 1.8rem; margin-bottom: 15px; color: #4ecca3; }
-        h3 { font-size: 1.3rem; margin-bottom: 10px; color: #e94560; }
-        p { line-height: 1.6; margin-bottom: 15px; }
-        .screen { display: none; flex-direction: column; align-items: center; gap: 20px; }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screen { display: none; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
         .screen.active { display: flex; }
-        input[type="text"], input[type="number"] { width: 100%; max-width: 300px; padding: 15px; font-size: 1.2rem; border: none; border-radius: 10px; background: #0f3460; color: white; text-align: center; }
-        input[type="text"]::placeholder { color: #888; }
-        .btn { padding: 15px 40px; font-size: 1.2rem; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: transform 0.2s, box-shadow 0.2s; min-width: 200px; }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 36px;
+            font-size: 1rem;
+            border: 2px solid;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-width: 180px;
+            background: transparent;
+        }
         .btn:hover { transform: scale(1.05); }
-        .btn-primary { background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%); color: white; }
-        .btn-primary:hover { box-shadow: 0 0 30px rgba(233, 69, 96, 0.6); }
-        .btn-secondary { background: linear-gradient(135deg, #4ecca3 0%, #45b7aa 100%); color: #1a1a2e; }
-        .btn-secondary:hover { box-shadow: 0 0 30px rgba(78, 204, 163, 0.6); }
-        .btn-small { padding: 10px 20px; font-size: 1rem; min-width: auto; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .mode-buttons { display: flex; flex-direction: column; gap: 20px; margin: 20px 0; }
-        .mode-btn { padding: 30px 40px; font-size: 1.3rem; border-radius: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .mode-btn .icon { font-size: 3rem; }
-        .mode-btn .subtitle { font-size: 0.9rem; opacity: 0.8; }
-        .word-editor-section { width: 100%; max-width: 400px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #333; }
-        .word-list-editor { width: 100%; background: #0f3460; border-radius: 15px; padding: 15px; }
-        .word-textarea { width: 100%; height: 150px; background: #1a1a2e; border: 2px solid #4ecca3; border-radius: 10px; color: white; font-size: 1rem; padding: 15px; resize: vertical; font-family: inherit; }
-        .word-textarea::placeholder { color: #666; }
-        .word-count { margin-top: 10px; color: #888; font-size: 0.9rem; }
-        .room-code { background: #0f3460; padding: 20px 40px; border-radius: 15px; font-size: 2.5rem; letter-spacing: 10px; font-weight: bold; color: #4ecca3; border: 2px solid #4ecca3; }
-        .player-list { width: 100%; max-width: 350px; background: #0f3460; border-radius: 15px; padding: 20px; margin: 10px 0; }
-        .player-list h3 { margin-bottom: 15px; color: #4ecca3; }
-        .player-item { padding: 10px; margin: 5px 0; background: #1a1a2e; border-radius: 8px; display: flex; align-items: center; gap: 10px; }
-        .player-item.host::before { content: '👑'; }
-        .player-item.you { border: 2px solid #4ecca3; }
-        .vote-player-item { padding: 12px 15px; margin: 8px 0; background: #1a1a2e; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .vote-player-item.you { border: 2px solid #4ecca3; }
-        .vote-player-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .btn-green {
+            color: #00ff41;
+            border-color: #00ff41;
+            text-shadow: 0 0 10px rgba(0,255,65,0.5);
+            box-shadow: 0 0 15px rgba(0,255,65,0.15), inset 0 0 15px rgba(0,255,65,0.05);
+        }
+        .btn-green:hover {
+            background: #00ff41;
+            color: #0a0a0a;
+            box-shadow: 0 0 30px rgba(0,255,65,0.4);
+        }
+
+        .btn-pink {
+            color: #ff0066;
+            border-color: #ff0066;
+            text-shadow: 0 0 10px rgba(255,0,102,0.5);
+            box-shadow: 0 0 15px rgba(255,0,102,0.15), inset 0 0 15px rgba(255,0,102,0.05);
+        }
+        .btn-pink:hover {
+            background: #ff0066;
+            color: #0a0a0a;
+            box-shadow: 0 0 30px rgba(255,0,102,0.4);
+        }
+
+        .btn-cyan {
+            color: #00d4ff;
+            border-color: #00d4ff;
+            text-shadow: 0 0 10px rgba(0,212,255,0.5);
+            box-shadow: 0 0 15px rgba(0,212,255,0.15), inset 0 0 15px rgba(0,212,255,0.05);
+        }
+        .btn-cyan:hover {
+            background: #00d4ff;
+            color: #0a0a0a;
+            box-shadow: 0 0 30px rgba(0,212,255,0.4);
+        }
+
+        .btn-small { padding: 8px 18px; font-size: 0.55rem; min-width: auto; }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: transparent;
+            border: 2px solid #ff0066;
+            color: #ff0066;
+            width: 44px;
+            height: 44px;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 100;
+            font-family: monospace;
+            display: none;
+        }
+        .back-btn:hover { background: #ff0066; color: #0a0a0a; }
+
+        /* Inputs */
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            max-width: 300px;
+            padding: 14px;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            border: 2px solid #00d4ff;
+            border-radius: 4px;
+            background: rgba(0,212,255,0.05);
+            color: #00d4ff;
+            text-align: center;
+        }
+        input::placeholder { color: rgba(0,212,255,0.4); }
+        input:focus { outline: none; box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+
+        /* Game cards */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            width: 100%;
+            max-width: 700px;
+            margin: 30px 0;
+        }
+        .game-card {
+            background: rgba(255,255,255,0.02);
+            border: 2px solid #222;
+            border-radius: 4px;
+            padding: 30px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            transition: all 0.3s;
+        }
+        .game-card:hover {
+            transform: translateY(-4px);
+            border-color: #444;
+        }
+        .game-card.imposter-card::before { background: #ff0066; }
+        .game-card.imposter-card:hover { border-color: #ff0066; box-shadow: 0 0 30px rgba(255,0,102,0.15); }
+        .game-card.brasket-card::before { background: #ff8800; }
+        .game-card.brasket-card:hover { border-color: #ff8800; box-shadow: 0 0 30px rgba(255,136,0,0.15); }
+
+        .game-card .card-icon { font-size: 3rem; margin-bottom: 15px; }
+        .game-card h2 { font-size: 0.9rem; margin-bottom: 10px; }
+        .game-card p { color: #666; font-size: 0.85rem; line-height: 1.5; }
+
+        /* Mode buttons */
+        .mode-buttons { display: flex; flex-direction: column; gap: 16px; margin: 20px 0; width: 100%; max-width: 350px; }
+        .mode-btn {
+            padding: 24px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.65rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+        }
+        .mode-btn .icon { font-size: 2rem; margin-bottom: 5px; }
+        .mode-btn .subtitle { font-size: 0.5rem; opacity: 0.6; font-family: 'Courier New', monospace; }
+
+        /* Side select buttons */
+        .side-select { display: flex; gap: 16px; margin: 10px 0; }
+        .side-btn {
+            padding: 16px 30px;
+            border: 2px solid #333;
+            border-radius: 4px;
+            background: transparent;
+            color: #888;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .side-btn.selected { border-color: #ff8800; color: #ff8800; box-shadow: 0 0 15px rgba(255,136,0,0.2); }
+        .side-btn:hover { border-color: #666; color: #ccc; }
+
+        /* Room code display */
+        .room-code {
+            background: rgba(0,255,65,0.05);
+            border: 2px solid #00ff41;
+            padding: 16px 32px;
+            border-radius: 4px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 1.8rem;
+            letter-spacing: 8px;
+            color: #00ff41;
+            text-shadow: 0 0 20px rgba(0,255,65,0.5);
+        }
+
+        /* Player list */
+        .player-list {
+            width: 100%;
+            max-width: 350px;
+            border: 1px solid #222;
+            border-radius: 4px;
+            padding: 16px;
+            margin: 10px 0;
+        }
+        .player-list h3 { color: #00d4ff; font-size: 0.6rem; margin-bottom: 12px; }
+        .player-item {
+            padding: 10px 12px;
+            margin: 6px 0;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        .player-item.host::before { content: '>>'; color: #ff8800; margin-right: 4px; font-weight: bold; }
+        .player-item.you { border-color: #00ff41; }
+
+        /* Voting UI */
+        .vote-player-item {
+            padding: 10px 12px;
+            margin: 6px 0;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .vote-player-item.you { border-color: #00ff41; }
+        .vote-player-info { display: flex; align-items: center; gap: 8px; flex: 1; }
         .vote-player-name { font-weight: bold; }
-        .vote-count { background: #e94560; color: white; padding: 3px 10px; border-radius: 15px; font-size: 0.9rem; min-width: 30px; text-align: center; }
-        .vote-btn { padding: 8px 20px; font-size: 0.9rem; background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; transition: transform 0.2s; }
-        .vote-btn:hover:not(:disabled) { transform: scale(1.05); }
-        .vote-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .vote-btn.voted { background: linear-gradient(135deg, #4ecca3 0%, #45b7aa 100%); }
-        .your-vote-label { color: #4ecca3; font-size: 0.8rem; margin-left: 5px; }
-        .role-card { background: linear-gradient(135deg, #0f3460 0%, #1a1a5e 100%); border-radius: 20px; padding: 40px; margin: 20px 0; border: 3px solid #e94560; min-width: 280px; }
-        .role-card.imposter { border-color: #e94560; box-shadow: 0 0 30px rgba(233, 69, 96, 0.5); }
-        .role-card.crewmate { border-color: #4ecca3; box-shadow: 0 0 30px rgba(78, 204, 163, 0.5); }
-        .role-label { font-size: 1rem; color: #888; margin-bottom: 10px; }
-        .role-text { font-size: 2rem; font-weight: bold; }
-        .role-card.imposter .role-text { color: #e94560; }
-        .role-card.crewmate .role-text { color: #4ecca3; }
-        .result-card { background: linear-gradient(135deg, #0f3460 0%, #1a1a5e 100%); border-radius: 20px; padding: 30px; margin: 20px 0; border: 3px solid #4ecca3; min-width: 280px; }
-        .result-card.caught { border-color: #4ecca3; box-shadow: 0 0 30px rgba(78, 204, 163, 0.5); }
-        .result-card.escaped { border-color: #e94560; box-shadow: 0 0 30px rgba(233, 69, 96, 0.5); }
-        .result-label { font-size: 1rem; color: #888; margin-bottom: 10px; }
-        .result-name { font-size: 2rem; font-weight: bold; color: #e94560; margin-bottom: 10px; }
-        .result-word { font-size: 1.2rem; color: #4ecca3; margin-bottom: 15px; }
-        .result-message { font-size: 1.2rem; font-weight: bold; }
-        .result-card.caught .result-message { color: #4ecca3; }
-        .result-card.escaped .result-message { color: #e94560; }
-        .status { color: #888; font-size: 1rem; margin: 10px 0; }
-        .status.waiting { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .error { color: #e94560; font-size: 1rem; margin: 10px 0; }
-        .or-text { color: #666; margin: 10px 0; }
-        .back-btn { position: fixed; top: 20px; left: 20px; background: #0f3460; border: 2px solid #e94560; color: #e94560; width: 50px; height: 50px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; transition: all 0.3s; z-index: 100; }
-        .back-btn:hover { background: #e94560; color: white; }
-        .player-boxes { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-top: 30px; }
-        .player-box { width: 100px; height: 100px; background: linear-gradient(135deg, #0f3460 0%, #1a1a5e 100%); border: 3px solid #e94560; border-radius: 15px; display: flex; justify-content: center; align-items: center; font-size: 1.3rem; font-weight: bold; cursor: pointer; transition: all 0.3s; }
-        .player-box:hover:not(.revealed) { transform: scale(1.1); box-shadow: 0 0 20px rgba(233, 69, 96, 0.6); }
-        .player-box.revealed { background: #333; border-color: #555; cursor: not-allowed; opacity: 0.5; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 50px; border-radius: 20px; text-align: center; border: 3px solid #e94560; max-width: 90%; }
-        .modal .role-text { font-size: 2.5rem; margin-bottom: 30px; font-weight: bold; }
-        .modal .role-text.imposter { color: #e94560; text-shadow: 0 0 20px rgba(233, 69, 96, 0.8); }
-        .modal .role-text.crewmate { color: #4ecca3; text-shadow: 0 0 20px rgba(78, 204, 163, 0.8); }
-        .end-buttons { display: none; margin-top: 30px; gap: 15px; justify-content: center; flex-wrap: wrap; }
-        .button-row { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
-        .instructions { color: #888; font-size: 0.9rem; margin-top: 10px; }
-        .vote-instruction { color: #888; font-size: 0.9rem; margin-bottom: 10px; }
-        
-        /* Content pages styles */
-        .content-box { background: #0f3460; border-radius: 15px; padding: 25px; margin: 15px 0; text-align: left; }
-        .content-box p { color: #ccc; }
-        .content-box ul, .content-box ol { color: #ccc; margin-left: 20px; margin-bottom: 15px; }
-        .content-box li { margin-bottom: 8px; line-height: 1.5; }
-        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
-        .feature-card { background: #1a1a2e; border: 2px solid #4ecca3; border-radius: 12px; padding: 20px; text-align: center; }
-        .feature-card .icon { font-size: 2.5rem; margin-bottom: 10px; }
-        .feature-card h3 { color: #4ecca3; margin-bottom: 8px; font-size: 1.1rem; }
-        .feature-card p { color: #888; font-size: 0.9rem; margin: 0; }
-        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
-        .nav-link { color: #4ecca3; text-decoration: none; font-size: 0.9rem; padding: 8px 15px; border: 1px solid #4ecca3; border-radius: 20px; transition: all 0.3s; }
-        .nav-link:hover { background: #4ecca3; color: #1a1a2e; }
-        .tip-box { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); border-left: 4px solid #e94560; padding: 15px; margin: 15px 0; border-radius: 0 10px 10px 0; }
-        .tip-box h4 { color: #e94560; margin-bottom: 8px; }
-        .tip-box p { color: #ccc; margin: 0; font-size: 0.95rem; }
-        .footer-nav { margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; }
-        .scroll-content { max-height: 70vh; overflow-y: auto; padding-right: 10px; }
-        .scroll-content::-webkit-scrollbar { width: 8px; }
-        .scroll-content::-webkit-scrollbar-track { background: #1a1a2e; border-radius: 4px; }
-        .scroll-content::-webkit-scrollbar-thumb { background: #4ecca3; border-radius: 4px; }
+        .vote-count {
+            background: #ff0066;
+            color: #0a0a0a;
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 0.85rem;
+            min-width: 24px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .vote-btn {
+            padding: 6px 14px;
+            font-size: 0.5rem;
+            font-family: 'Press Start 2P', monospace;
+            background: transparent;
+            border: 1px solid #ff0066;
+            color: #ff0066;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .vote-btn:hover:not(:disabled) { background: #ff0066; color: #0a0a0a; }
+        .vote-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .vote-btn.voted { background: #00ff41; border-color: #00ff41; color: #0a0a0a; }
+        .your-vote-label { color: #00ff41; font-size: 0.75rem; margin-left: 4px; }
+
+        /* Role card */
+        .role-card {
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 30px;
+            margin: 15px 0;
+            min-width: 260px;
+            background: rgba(255,255,255,0.02);
+        }
+        .role-card.imposter { border-color: #ff0066; box-shadow: 0 0 30px rgba(255,0,102,0.2); }
+        .role-card.crewmate { border-color: #00ff41; box-shadow: 0 0 30px rgba(0,255,65,0.2); }
+        .role-label { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+        .role-text { font-size: 1.4rem; font-weight: bold; font-family: 'Press Start 2P', monospace; }
+        .role-card.imposter .role-text { color: #ff0066; text-shadow: 0 0 20px rgba(255,0,102,0.5); }
+        .role-card.crewmate .role-text { color: #00ff41; text-shadow: 0 0 20px rgba(0,255,65,0.5); }
+
+        /* Result card */
+        .result-card {
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 24px;
+            margin: 15px 0;
+            min-width: 260px;
+            background: rgba(255,255,255,0.02);
+        }
+        .result-card.caught { border-color: #00ff41; box-shadow: 0 0 30px rgba(0,255,65,0.2); }
+        .result-card.escaped { border-color: #ff0066; box-shadow: 0 0 30px rgba(255,0,102,0.2); }
+        .result-label { font-size: 0.85rem; color: #666; margin-bottom: 8px; }
+        .result-name { font-size: 1.2rem; font-weight: bold; color: #ff0066; margin-bottom: 8px; font-family: 'Press Start 2P', monospace; }
+        .result-word { font-size: 1rem; color: #00ff41; margin-bottom: 12px; }
+        .result-message { font-size: 0.9rem; font-weight: bold; }
+        .result-card.caught .result-message { color: #00ff41; }
+        .result-card.escaped .result-message { color: #ff0066; }
+
+        /* Word editor */
+        .word-editor-section { width: 100%; max-width: 400px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #1a1a1a; }
+        .word-textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(0,212,255,0.03);
+            border: 1px solid #222;
+            border-radius: 4px;
+            color: #00d4ff;
+            font-size: 0.9rem;
+            padding: 12px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+        }
+        .word-textarea::placeholder { color: #333; }
+        .word-textarea:focus { outline: none; border-color: #00d4ff; }
+        .word-count { margin-top: 6px; color: #444; font-size: 0.8rem; }
+
+        /* Player boxes (single device imposter) */
+        .player-boxes { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; }
+        .player-box {
+            width: 80px;
+            height: 80px;
+            border: 2px solid #ff0066;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            color: #ff0066;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: transparent;
+        }
+        .player-box:hover:not(.revealed) { box-shadow: 0 0 20px rgba(255,0,102,0.4); transform: scale(1.05); }
+        .player-box.revealed { border-color: #222; color: #333; cursor: default; }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #0a0a0a;
+            border: 2px solid #ff0066;
+            padding: 40px;
+            border-radius: 4px;
+            text-align: center;
+            max-width: 90%;
+        }
+        .modal .role-text { font-size: 1.4rem; margin-bottom: 24px; }
+
+        /* Status text */
+        .status { color: #444; font-size: 0.9rem; margin: 8px 0; }
+        .status.waiting { animation: blink 1.5s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .error { color: #ff0066; font-size: 0.9rem; margin: 8px 0; }
+        .or-text { color: #333; margin: 8px 0; font-family: 'Press Start 2P', monospace; font-size: 0.5rem; }
+
+        /* Misc */
+        .instructions { color: #444; font-size: 0.8rem; margin-top: 8px; line-height: 1.6; }
+        .vote-instruction { color: #444; font-size: 0.8rem; margin-bottom: 8px; }
+        .button-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .end-buttons { display: none; margin-top: 20px; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        /* Game canvas container */
+        .game-canvas-wrap {
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 8/5;
+            border: 2px solid #ff8800;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            background: #1a0a00;
+        }
+        .game-canvas-wrap canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Iframe game container */
+        .iframe-wrap {
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 4/3;
+            border: 2px solid #ff8800;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .iframe-wrap iframe { width: 100%; height: 100%; border: none; }
+
+        /* Control hints */
+        .control-hints {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        .control-hint {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .control-hint kbd {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 2px 8px;
+            border-radius: 3px;
+            color: #ff8800;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            padding-top: 16px;
+            border-top: 1px solid #111;
+        }
+        .footer a { color: #333; text-decoration: none; font-size: 0.75rem; transition: color 0.2s; }
+        .footer a:hover { color: #666; }
+
+        /* Title glow */
+        .title-glow {
+            font-size: 1.5rem;
+            color: #00ff41;
+            text-shadow: 0 0 30px rgba(0,255,65,0.4), 0 0 60px rgba(0,255,65,0.1);
+            margin-bottom: 8px;
+        }
+        .subtitle { color: #444; font-size: 0.5rem; font-family: 'Press Start 2P', monospace; letter-spacing: 3px; }
+
+        /* Score display for brasket */
+        .score-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            font-family: 'Press Start 2P', monospace;
+            margin: 10px 0;
+        }
+        .score-left { color: #00d4ff; font-size: 1.5rem; text-shadow: 0 0 15px rgba(0,212,255,0.5); }
+        .score-sep { color: #333; font-size: 1rem; }
+        .score-right { color: #ff8800; font-size: 1.5rem; text-shadow: 0 0 15px rgba(255,136,0,0.5); }
+
+        /* Modifier announcement */
+        .modifier-announce {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Press Start 2P', monospace;
+            font-size: 1rem;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255,255,255,0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        .modifier-announce.show { opacity: 1; }
+
+        @media (max-width: 600px) {
+            .title-glow { font-size: 1rem; }
+            .game-grid { grid-template-columns: 1fr; }
+            .game-card h2 { font-size: 0.7rem; }
+            .btn { font-size: 0.55rem; padding: 12px 24px; min-width: 150px; }
+            .room-code { font-size: 1.3rem; padding: 12px 20px; }
+        }
     </style>
 </head>
 <body>
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1190255474469820" crossorigin="anonymous"></script>
-    
+
     <!-- Left Ad -->
     <div class="ad-wrapper ad-left">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-1190255474469820"
-             data-ad-slot="5870859418"
-             data-ad-format="vertical"
-             data-full-width-responsive="false"></ins>
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1190255474469820" data-ad-slot="5870859418" data-ad-format="vertical" data-full-width-responsive="false"></ins>
         <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
     </div>
-    
+
     <!-- Right Ad -->
     <div class="ad-wrapper ad-right">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-1190255474469820"
-             data-ad-slot="5870859418"
-             data-ad-format="vertical"
-             data-full-width-responsive="false"></ins>
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1190255474469820" data-ad-slot="5870859418" data-ad-format="vertical" data-full-width-responsive="false"></ins>
         <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
     </div>
-    
+
     <div class="container">
-        <!-- HOME SCREEN (NEW) -->
-        <div class="screen active" id="homeScreen">
-            <h1>🎭 IMPOSTER</h1>
-            <p style="color: #ccc; font-size: 1.1rem; max-width: 500px;">The free online social deduction party game. One player is secretly the imposter — can your group find them before it's too late?</p>
-            
-            <button class="btn btn-primary" onclick="showScreen('modeScreen')" style="font-size: 1.4rem; padding: 20px 50px;">PLAY NOW</button>
-            
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <div class="icon">👥</div>
-                    <h3>3-20 Players</h3>
-                    <p>Perfect for small gatherings or big parties</p>
+
+        <!-- ========== LANDING PAGE ========== -->
+        <div class="screen active" id="landingScreen">
+            <h1 class="title-glow">GAME HUB</h1>
+            <p class="subtitle">SELECT A GAME</p>
+
+            <div class="game-grid">
+                <div class="game-card imposter-card" onclick="showScreen('impModeScreen')">
+                    <div class="card-icon">?!</div>
+                    <h2 style="color:#ff0066">IMPOSTER</h2>
+                    <p>Social deduction party game. One player is the imposter &mdash; can your group find them?</p>
                 </div>
-                <div class="feature-card">
-                    <div class="icon">📱</div>
-                    <h3>Any Device</h3>
-                    <p>Works on phones, tablets, and computers</p>
-                </div>
-                <div class="feature-card">
-                    <div class="icon">🆓</div>
-                    <h3>100% Free</h3>
-                    <p>No downloads, no sign-ups, no ads interrupting gameplay</p>
-                </div>
-                <div class="feature-card">
-                    <div class="icon">⚡</div>
-                    <h3>Instant Start</h3>
-                    <p>Create a room and play in seconds</p>
+                <div class="game-card brasket-card" onclick="showScreen('brModeScreen')">
+                    <div class="card-icon">//</div>
+                    <h2 style="color:#ff8800">BRASKET HANDOM</h2>
+                    <p>Chaotic basketball with random physics. Play on one device or online with a friend!</p>
                 </div>
             </div>
-            
-            <div class="content-box">
-                <h2 style="text-align: center; margin-bottom: 15px;">How It Works</h2>
-                <p>Everyone receives a secret word — except one player, the <strong style="color: #e94560;">Imposter</strong>, who gets nothing. Players take turns giving one-word clues about their word. The imposter must bluff their way through without knowing what everyone else knows!</p>
-                <p>After the clue round, everyone votes on who they think the imposter is. If the group catches them, they win! If the imposter escapes detection, they win!</p>
-            </div>
-            
-            <div class="nav-links">
-                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
-                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
-                <a href="#" class="nav-link" onclick="showScreen('privacyScreen'); return false;">🔒 Privacy Policy</a>
+
+            <div class="footer">
+                <a href="#" onclick="showScreen('privacyScreen'); return false;">Privacy Policy</a>
             </div>
         </div>
 
-        <!-- HOW TO PLAY SCREEN (NEW) -->
-        <div class="screen" id="howToPlayScreen">
-            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
-            <h1>📖 How to Play</h1>
-            
-            <div class="scroll-content">
-                <div class="content-box">
-                    <h2>Game Overview</h2>
-                    <p>Imposter is a social deduction game where players try to identify the one person who doesn't belong. It's perfect for parties, family game nights, team building events, or any gathering where you want to spark conversation and laughter.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Setup (2 minutes)</h2>
-                    <ol>
-                        <li><strong>Choose your mode:</strong> Use "One Device" to pass a single phone around, or "Multiple Devices" so everyone plays on their own phone.</li>
-                        <li><strong>For Multiple Devices:</strong> One person creates a room and shares the 4-letter code. Everyone else joins using that code.</li>
-                        <li><strong>Need 3+ players:</strong> The game works best with 4-8 players, but supports up to 20!</li>
-                    </ol>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Gameplay</h2>
-                    <ol>
-                        <li><strong>Roles are assigned:</strong> Everyone secretly views their role. Most players see the same word (like "Pizza"). One player — the Imposter — sees only "IMPOSTER" with no word.</li>
-                        <li><strong>Give clues:</strong> Go around the circle. Each player says ONE word that relates to the secret word. The imposter must fake it!</li>
-                        <li><strong>Discuss:</strong> After clues, players discuss who they think is suspicious.</li>
-                        <li><strong>Vote:</strong> Everyone votes for who they think is the imposter. Majority wins!</li>
-                    </ol>
-                </div>
-                
-                <div class="tip-box">
-                    <h4>💡 Tip for Regular Players</h4>
-                    <p>Don't make your clues too obvious, or the imposter will figure out the word! But don't be too vague either, or you'll look suspicious yourself.</p>
-                </div>
-                
-                <div class="tip-box">
-                    <h4>🎭 Tip for Imposters</h4>
-                    <p>Listen carefully to other players' clues. Try to figure out the category or theme. Give a clue that could fit many words. Act confident!</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Winning the Game</h2>
-                    <p><strong style="color: #4ecca3;">Crewmates win</strong> if they correctly vote out the imposter.</p>
-                    <p><strong style="color: #e94560;">The Imposter wins</strong> if someone else gets the most votes, or if there's a tie.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Custom Word Lists</h2>
-                    <p>Want to theme your game? Click "Edit Word List" in the lobby to add your own words! Great ideas include:</p>
-                    <ul>
-                        <li>Movie titles for film buffs</li>
-                        <li>Inside jokes for friend groups</li>
-                        <li>Vocabulary words for classroom games</li>
-                        <li>Industry terms for work team building</li>
-                        <li>Holiday-themed words for seasonal parties</li>
-                    </ul>
-                    <p>Words reset to family-friendly defaults when you leave, so feel free to experiment!</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Example Round</h2>
-                    <p><em>The secret word is "Beach"</em></p>
-                    <p>Player 1: "Sand" ✓</p>
-                    <p>Player 2: "Waves" ✓</p>
-                    <p>Player 3 (Imposter): "Relaxing" — Could fit many words!</p>
-                    <p>Player 4: "Sunscreen" ✓</p>
-                    <p><em>Players discuss... Player 3's clue was generic. They vote and catch the imposter!</em></p>
-                </div>
-            </div>
-            
-            <button class="btn btn-primary" onclick="showScreen('modeScreen')">Play Now!</button>
-            
-            <div class="nav-links">
-                <a href="#" class="nav-link" onclick="showScreen('homeScreen'); return false;">🏠 Home</a>
-                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
-                <a href="#" class="nav-link" onclick="showScreen('privacyScreen'); return false;">🔒 Privacy</a>
-            </div>
-        </div>
-
-        <!-- ABOUT SCREEN (NEW) -->
-        <div class="screen" id="aboutScreen">
-            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
-            <h1>ℹ️ About Imposter</h1>
-            
-            <div class="scroll-content">
-                <div class="content-box">
-                    <h2>What is Imposter?</h2>
-                    <p>Imposter is a free, browser-based social deduction party game inspired by classic word games and hidden role games. It combines the best elements of games like Spyfall, Werewolf, and Codenames into a fast-paced, accessible experience anyone can enjoy.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Why We Built This</h2>
-                    <p>We wanted a party game that:</p>
-                    <ul>
-                        <li>Works instantly without app downloads or account creation</li>
-                        <li>Plays great on any device — phones, tablets, or computers</li>
-                        <li>Supports both in-person gatherings and remote play</li>
-                        <li>Is completely free with no paywalls or premium features</li>
-                        <li>Uses family-friendly content by default</li>
-                    </ul>
-                    <p>Imposter was built to bring people together for laughter, friendly deception, and memorable moments.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Perfect For</h2>
-                    <ul>
-                        <li><strong>House parties</strong> — Get everyone involved, even people who "don't like games"</li>
-                        <li><strong>Family gatherings</strong> — Safe, fun content for all ages</li>
-                        <li><strong>Team building</strong> — Break the ice and spark conversation</li>
-                        <li><strong>Classrooms</strong> — Educational and engaging vocabulary practice</li>
-                        <li><strong>Video calls</strong> — Stay connected with remote friends</li>
-                        <li><strong>Waiting rooms</strong> — Quick rounds pass the time</li>
-                    </ul>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Features</h2>
-                    <ul>
-                        <li>🎮 <strong>Two play modes:</strong> Single device (pass-and-play) or multiplayer (everyone on their own device)</li>
-                        <li>🔗 <strong>Easy room codes:</strong> 4-letter codes make joining simple</li>
-                        <li>📝 <strong>Custom words:</strong> Create themed games with your own word lists</li>
-                        <li>🗳️ <strong>Built-in voting:</strong> Automatic vote tallying and results</li>
-                        <li>🔄 <strong>Quick rounds:</strong> Play again instantly without re-setup</li>
-                        <li>📱 <strong>Responsive design:</strong> Looks great on any screen size</li>
-                    </ul>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Technical Details</h2>
-                    <p>Imposter uses real-time synchronization to keep all players connected. Games are hosted securely and rooms are automatically cleaned up after players leave. No personal data is collected or stored — just pure gameplay.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Contact</h2>
-                    <p>Have feedback, suggestions, or found a bug? We'd love to hear from you!</p>
-                    <p>Email: <strong style="color: #4ecca3;">contact@secretimposter.com</strong></p>
-                </div>
-            </div>
-            
-            <button class="btn btn-primary" onclick="showScreen('modeScreen')">Play Now!</button>
-            
-            <div class="nav-links">
-                <a href="#" class="nav-link" onclick="showScreen('homeScreen'); return false;">🏠 Home</a>
-                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
-                <a href="#" class="nav-link" onclick="showScreen('privacyScreen'); return false;">🔒 Privacy</a>
-            </div>
-        </div>
-
-        <!-- PRIVACY POLICY SCREEN (NEW) -->
+        <!-- ========== PRIVACY (minimal) ========== -->
         <div class="screen" id="privacyScreen">
-            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
-            <h1>🔒 Privacy Policy</h1>
-            
-            <div class="scroll-content">
-                <div class="content-box">
-                    <p><strong>Last updated:</strong> January 2025</p>
-                    <p>Your privacy is important to us. This Privacy Policy explains how Imposter ("we", "us", or "our") collects, uses, and protects your information when you use our website at secretimposter.com.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Information We Collect</h2>
-                    <h3>Information You Provide</h3>
-                    <ul>
-                        <li><strong>Display Name:</strong> When playing multiplayer, you enter a nickname. This is temporary and not stored after you leave the room.</li>
-                        <li><strong>Custom Words:</strong> If you create custom word lists, these are stored temporarily in the game room and deleted when all players leave.</li>
-                    </ul>
-                    
-                    <h3>Information Collected Automatically</h3>
-                    <ul>
-                        <li><strong>Game Session Data:</strong> Temporary data needed to run the game (room codes, player connections, votes). This is deleted when the game ends.</li>
-                        <li><strong>Analytics:</strong> We may collect anonymous usage statistics to improve the game (pages visited, features used, device type). This data cannot identify you personally.</li>
-                    </ul>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Information We Do NOT Collect</h2>
-                    <ul>
-                        <li>Email addresses</li>
-                        <li>Real names</li>
-                        <li>Location data</li>
-                        <li>Payment information</li>
-                        <li>Social media accounts</li>
-                        <li>Any personally identifiable information</li>
-                    </ul>
-                </div>
-                
-                <div class="content-box">
-                    <h2>How We Use Information</h2>
-                    <p>The minimal information we collect is used solely to:</p>
-                    <ul>
-                        <li>Enable real-time multiplayer gameplay</li>
-                        <li>Display player names during games</li>
-                        <li>Improve game performance and fix bugs</li>
-                        <li>Understand how players use the game to make improvements</li>
-                    </ul>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Third-Party Services</h2>
-                    <h3>Firebase</h3>
-                    <p>We use Google Firebase to enable real-time multiplayer functionality. Firebase may collect anonymous technical data. See <a href="https://firebase.google.com/support/privacy" style="color: #4ecca3;" target="_blank">Firebase Privacy Policy</a>.</p>
-                    
-                    <h3>Google AdSense</h3>
-                    <p>We display ads through Google AdSense to support free gameplay. Google may use cookies to show relevant ads. See <a href="https://policies.google.com/privacy" style="color: #4ecca3;" target="_blank">Google Privacy Policy</a>.</p>
-                    <p>You can opt out of personalized advertising at <a href="https://www.google.com/settings/ads" style="color: #4ecca3;" target="_blank">Google Ads Settings</a>.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Cookies</h2>
-                    <p>Our website may use cookies for:</p>
-                    <ul>
-                        <li>Essential game functionality</li>
-                        <li>Analytics (understanding usage patterns)</li>
-                        <li>Advertising (through Google AdSense)</li>
-                    </ul>
-                    <p>You can control cookies through your browser settings.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Data Security</h2>
-                    <p>We implement reasonable security measures to protect game data. However, no internet transmission is 100% secure. Game rooms use randomly generated codes and data is automatically deleted after sessions end.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Children's Privacy</h2>
-                    <p>Imposter is designed to be family-friendly. We do not knowingly collect personal information from children under 13. The game uses only temporary display names that are deleted after each session.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Your Rights</h2>
-                    <p>Since we don't collect personal data, there is no personal information to access, modify, or delete. Game session data is automatically removed when you leave.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Changes to This Policy</h2>
-                    <p>We may update this Privacy Policy occasionally. Changes will be posted on this page with an updated "Last updated" date.</p>
-                </div>
-                
-                <div class="content-box">
-                    <h2>Contact Us</h2>
-                    <p>Questions about this Privacy Policy? Contact us at:</p>
-                    <p>Email: <strong style="color: #4ecca3;">contact@secretimposter.com</strong></p>
-                </div>
-            </div>
-            
-            <div class="nav-links">
-                <a href="#" class="nav-link" onclick="showScreen('homeScreen'); return false;">🏠 Home</a>
-                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
-                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
+            <button class="back-btn" onclick="showScreen('landingScreen')">&#8592;</button>
+            <h2 style="color:#666; font-size:0.7rem;">Privacy Policy</h2>
+            <div style="max-width:500px; text-align:left; color:#555; font-size:0.8rem; line-height:1.7; margin-top:16px;">
+                <p>We collect no personal data. Display names and game data are temporary and deleted when you leave. We use Google Firebase for multiplayer and Google AdSense for ads. See <a href="https://policies.google.com/privacy" style="color:#00d4ff;" target="_blank">Google's Privacy Policy</a> for details.</p>
+                <p style="margin-top:12px;">Contact: <span style="color:#00d4ff;">contact@secretimposter.com</span></p>
             </div>
         </div>
 
-        <!-- MODE SELECT SCREEN (existing, slightly modified) -->
-        <div class="screen" id="modeScreen">
-            <button class="back-btn" onclick="showScreen('homeScreen')">←</button>
-            <h1>🎭 IMPOSTER</h1>
-            <p style="color: #888; margin-bottom: 20px;">Choose your game mode</p>
+        <!-- ========== IMPOSTER: MODE SELECT ========== -->
+        <div class="screen" id="impModeScreen">
+            <button class="back-btn" onclick="showScreen('landingScreen')">&#8592;</button>
+            <h1 style="color:#ff0066; font-size:1.2rem;">IMPOSTER</h1>
+            <p style="color:#444; font-size:0.8rem;">Choose your game mode</p>
             <div class="mode-buttons">
-                <button class="btn btn-primary mode-btn" onclick="selectMode('single')">
-                    <span class="icon">📱</span><span>One Device</span><span class="subtitle">Pass the phone around</span>
+                <button class="btn btn-pink mode-btn" onclick="selectImpMode('single')">
+                    <span class="icon">1</span><span>One Device</span><span class="subtitle">Pass the phone around</span>
                 </button>
-                <button class="btn btn-secondary mode-btn" onclick="selectMode('multi')">
-                    <span class="icon">📱📱📱</span><span>Multiple Devices</span><span class="subtitle">Everyone uses their own phone</span>
+                <button class="btn btn-green mode-btn" onclick="selectImpMode('multi')">
+                    <span class="icon">+++</span><span>Multiple Devices</span><span class="subtitle">Everyone on their own phone</span>
                 </button>
-            </div>
-            <div class="nav-links" style="margin-top: 30px;">
-                <a href="#" class="nav-link" onclick="showScreen('howToPlayScreen'); return false;">📖 How to Play</a>
-                <a href="#" class="nav-link" onclick="showScreen('aboutScreen'); return false;">ℹ️ About</a>
             </div>
         </div>
 
+        <!-- IMPOSTER: Single device lobby -->
         <div class="screen" id="singleLobbyScreen">
-            <button class="back-btn" onclick="backToModeSelect()">←</button>
-            <h1>🎭 ONE DEVICE</h1>
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
-                <label for="singlePlayerCount" style="font-size: 1.2rem;">Number of Players:</label>
-                <input type="number" id="singlePlayerCount" min="3" max="20" value="4" style="width: 100px; height: 60px; font-size: 2rem;">
+            <button class="back-btn" onclick="showScreen('impModeScreen')">&#8592;</button>
+            <h1 style="color:#ff0066; font-size:1rem;">ONE DEVICE</h1>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+                <label style="font-size:0.9rem; color:#888;">Number of Players:</label>
+                <input type="number" id="singlePlayerCount" min="3" max="20" value="4" style="width:80px; height:50px; font-size:1.5rem;">
             </div>
-            <button class="btn btn-primary" onclick="startSingleGame()">PLAY</button>
-            <button class="btn btn-secondary btn-small" onclick="toggleSingleWordEditor()" id="singleEditBtn" style="margin-top: 10px;">📝 Edit Word List</button>
-            <div class="word-editor-section" id="singleWordEditorSection" style="display: none;">
-                <h3 style="color: #4ecca3; margin-bottom: 10px;">📝 Word List (this game only)</h3>
-                <p style="color: #888; font-size: 0.9rem; margin-bottom: 10px;">One word per line, or separate with commas</p>
-                <div class="word-list-editor">
-                    <textarea class="word-textarea" id="singleWordTextarea" placeholder="Enter words here..."></textarea>
-                    <div class="word-count" id="singleWordCount">0 words</div>
-                </div>
-                <div class="button-row" style="margin-top: 10px;">
-                    <button class="btn btn-secondary btn-small" onclick="resetWordsSingle()">Reset to Default</button>
-                    <button class="btn btn-primary btn-small" onclick="toggleSingleWordEditor()">Done</button>
+            <button class="btn btn-pink" onclick="startSingleGame()">PLAY</button>
+            <button class="btn btn-cyan btn-small" onclick="toggleSingleWordEditor()" id="singleEditBtn">EDIT WORDS</button>
+            <div class="word-editor-section" id="singleWordEditorSection" style="display:none;">
+                <p style="color:#444; font-size:0.8rem; margin-bottom:8px;">One word per line or comma-separated</p>
+                <textarea class="word-textarea" id="singleWordTextarea" placeholder="Enter words..."></textarea>
+                <div class="word-count" id="singleWordCount">0 words</div>
+                <div class="button-row" style="margin-top:8px;">
+                    <button class="btn btn-cyan btn-small" onclick="resetWordsSingle()">RESET</button>
+                    <button class="btn btn-green btn-small" onclick="toggleSingleWordEditor()">DONE</button>
                 </div>
             </div>
-            <p class="instructions">Each player taps a box to see their role.<br>One person is the IMPOSTER!</p>
+            <p class="instructions">Each player taps a box to see their role. One person is the IMPOSTER!</p>
         </div>
 
+        <!-- IMPOSTER: Single device game -->
         <div class="screen" id="singleGameScreen">
-            <h1>🎭 Tap Your Box!</h1>
+            <h2 style="color:#ff0066; font-size:0.8rem;">TAP YOUR BOX</h2>
             <div class="player-boxes" id="singlePlayerBoxes"></div>
             <div class="end-buttons" id="singleEndButtons">
-                <button class="btn btn-secondary" onclick="newSingleRound()">New Round</button>
-                <button class="btn btn-primary" onclick="backToSingleLobby()">Back to Lobby</button>
+                <button class="btn btn-cyan" onclick="newSingleRound()">NEW ROUND</button>
+                <button class="btn btn-pink" onclick="showScreen('singleLobbyScreen')">LOBBY</button>
             </div>
         </div>
 
         <div class="modal" id="singleModal">
             <div class="modal-content">
                 <div class="role-text" id="singleRoleText"></div>
-                <button class="btn btn-secondary" onclick="closeSingleModal()">OK</button>
+                <button class="btn btn-green" onclick="closeSingleModal()">OK</button>
             </div>
         </div>
 
+        <!-- IMPOSTER: Multi menu -->
         <div class="screen" id="multiMenuScreen">
-            <button class="back-btn" onclick="backToModeSelect()">←</button>
-            <h1>🎭 MULTIPLAYER</h1>
-            <input type="text" id="playerName" placeholder="Enter your name" maxlength="15">
-            <button class="btn btn-primary" onclick="createRoom()">Create Room</button>
-            <div class="or-text">— or —</div>
-            <input type="text" id="joinCode" placeholder="Enter room code" maxlength="6" style="text-transform: uppercase;">
-            <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
+            <button class="back-btn" onclick="showScreen('impModeScreen')">&#8592;</button>
+            <h1 style="color:#ff0066; font-size:1rem;">MULTIPLAYER</h1>
+            <input type="text" id="playerName" placeholder="Your name" maxlength="15">
+            <button class="btn btn-pink" onclick="createRoom()">CREATE ROOM</button>
+            <div class="or-text">-- or --</div>
+            <input type="text" id="joinCode" placeholder="Room code" maxlength="6" style="text-transform:uppercase;">
+            <button class="btn btn-green" onclick="joinRoom()">JOIN ROOM</button>
             <p class="error" id="menuError"></p>
         </div>
 
+        <!-- IMPOSTER: Multi lobby -->
         <div class="screen" id="multiLobbyScreen">
-            <h1>🎭 LOBBY</h1>
-            <p>Room Code:</p>
+            <h2 style="color:#ff0066; font-size:0.8rem;">LOBBY</h2>
+            <p style="color:#666; font-size:0.8rem;">Room Code:</p>
             <div class="room-code" id="displayRoomCode">----</div>
             <div class="player-list"><h3>Players</h3><div id="playerListContainer"></div></div>
-            <button class="btn btn-primary" id="startGameBtn" onclick="startMultiGame()" style="display: none;">Start Game</button>
-            <p class="status waiting" id="lobbyStatus">Waiting for host to start...</p>
-            <button class="btn btn-secondary btn-small" onclick="toggleMultiWordEditor()" id="multiEditBtn" style="margin-top: 10px;">📝 Edit Word List</button>
-            <div class="word-editor-section" id="multiWordEditorSection" style="display: none;">
-                <h3 style="color: #4ecca3; margin-bottom: 10px;">📝 Word List (this room only)</h3>
-                <p style="color: #888; font-size: 0.9rem; margin-bottom: 10px;">One word per line, or separate with commas</p>
-                <div class="word-list-editor">
-                    <textarea class="word-textarea" id="multiWordTextarea" placeholder="Enter words here..."></textarea>
-                    <div class="word-count" id="multiWordCount">0 words</div>
-                </div>
-                <div class="button-row" style="margin-top: 10px;">
-                    <button class="btn btn-secondary btn-small" onclick="resetWordsMulti()">Reset to Default</button>
-                    <button class="btn btn-primary btn-small" onclick="saveWordsMulti()">Save for Room</button>
+            <button class="btn btn-pink" id="startGameBtn" onclick="startMultiGame()" style="display:none;">START GAME</button>
+            <p class="status waiting" id="lobbyStatus">Waiting for host...</p>
+            <button class="btn btn-cyan btn-small" onclick="toggleMultiWordEditor()" id="multiEditBtn">EDIT WORDS</button>
+            <div class="word-editor-section" id="multiWordEditorSection" style="display:none;">
+                <p style="color:#444; font-size:0.8rem; margin-bottom:8px;">One word per line or comma-separated</p>
+                <textarea class="word-textarea" id="multiWordTextarea" placeholder="Enter words..."></textarea>
+                <div class="word-count" id="multiWordCount">0 words</div>
+                <div class="button-row" style="margin-top:8px;">
+                    <button class="btn btn-cyan btn-small" onclick="resetWordsMulti()">RESET</button>
+                    <button class="btn btn-green btn-small" onclick="saveWordsMulti()">SAVE</button>
                 </div>
             </div>
-            <button class="btn btn-secondary btn-small" onclick="leaveRoom()" style="margin-top: 20px;">Leave Room</button>
+            <button class="btn btn-pink btn-small" onclick="leaveRoom()" style="margin-top:16px;">LEAVE</button>
         </div>
 
+        <!-- IMPOSTER: Multi game -->
         <div class="screen" id="multiGameScreen">
-            <h1 id="roleTitle">🎭 YOUR ROLE</h1>
+            <h2 id="roleTitle" style="color:#ff0066; font-size:0.8rem;">YOUR ROLE</h2>
             <div class="role-card" id="roleCard">
                 <div class="role-label" id="roleLabel">You are:</div>
                 <div class="role-text" id="multiRoleText">Loading...</div>
             </div>
             <p class="vote-instruction">Vote for who you think is the imposter!</p>
-            <div class="player-list"><h3>🗳️ Vote</h3><div id="votePlayerList"></div></div>
+            <div class="player-list"><h3>VOTE</h3><div id="votePlayerList"></div></div>
             <p class="status" id="voteStatus">Waiting for votes...</p>
         </div>
 
+        <!-- IMPOSTER: Multi end -->
         <div class="screen" id="multiEndScreen">
-            <h1>🎭 RESULTS</h1>
+            <h2 style="color:#ff0066; font-size:0.8rem;">RESULTS</h2>
             <div class="result-card" id="resultCard">
                 <div class="result-label">The imposter was:</div>
                 <div class="result-name" id="resultName">???</div>
@@ -564,490 +685,1176 @@
                 <div class="result-message" id="resultMessage">???</div>
             </div>
             <div class="player-list"><h3>Final Votes</h3><div id="endPlayerList"></div></div>
-            <button class="btn btn-secondary" id="newRoundBtn" onclick="newMultiRound()" style="display: none;">New Round</button>
-            <button class="btn btn-primary" id="backToLobbyBtn" onclick="backToMultiLobby()" style="display: none;">Back to Lobby</button>
-            <button class="btn btn-secondary btn-small" id="leaveRoomEndBtn" onclick="leaveRoom()" style="display: none;">Leave Room</button>
+            <button class="btn btn-cyan" id="newRoundBtn" onclick="newMultiRound()" style="display:none;">NEW ROUND</button>
+            <button class="btn btn-pink" id="backToLobbyBtn" onclick="backToMultiLobby()" style="display:none;">LOBBY</button>
+            <button class="btn btn-pink btn-small" id="leaveRoomEndBtn" onclick="leaveRoom()" style="display:none;">LEAVE</button>
             <p class="status waiting" id="endStatus">Waiting for host...</p>
+        </div>
+
+        <!-- ========== BRASKET HANDOM: MODE SELECT ========== -->
+        <div class="screen" id="brModeScreen">
+            <button class="back-btn" onclick="showScreen('landingScreen')">&#8592;</button>
+            <h1 style="color:#ff8800; font-size:1rem;">BRASKET HANDOM</h1>
+            <p style="color:#444; font-size:0.8rem;">How do you want to play?</p>
+            <div class="mode-buttons">
+                <button class="btn btn-cyan mode-btn" style="border-color:#ff8800; color:#ff8800;" onclick="showScreen('brLocalSetup')">
+                    <span class="icon">1</span><span>On Device</span><span class="subtitle">Play on this device</span>
+                </button>
+                <button class="btn btn-green mode-btn" style="border-color:#ff8800; color:#ff8800;" onclick="showScreen('brOnlineMenu')">
+                    <span class="icon">@</span><span>Online</span><span class="subtitle">Play with a friend remotely</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- BRASKET: Local setup -->
+        <div class="screen" id="brLocalSetup">
+            <button class="back-btn" onclick="showScreen('brModeScreen')">&#8592;</button>
+            <h2 style="color:#ff8800; font-size:0.8rem;">ON DEVICE</h2>
+
+            <p style="color:#888; font-size:0.8rem;">Players:</p>
+            <div class="side-select" id="brPlayerCountSelect">
+                <button class="side-btn selected" onclick="brSetPlayerCount(1)" id="br1PBtn">1 PLAYER</button>
+                <button class="side-btn" onclick="brSetPlayerCount(2)" id="br2PBtn">2 PLAYERS</button>
+            </div>
+
+            <p style="color:#888; font-size:0.8rem;" id="brSideLabel">Your side:</p>
+            <div class="side-select" id="brSideSelect">
+                <button class="side-btn selected" onclick="brSetSide('left')" id="brLeftBtn">LEFT</button>
+                <button class="side-btn" onclick="brSetSide('right')" id="brRightBtn">RIGHT</button>
+            </div>
+
+            <button class="btn btn-green" style="border-color:#ff8800; color:#ff8800; margin-top:10px;" onclick="startBrLocal()">START</button>
+
+            <div class="control-hints" style="margin-top:16px;">
+                <span class="control-hint">Left: <kbd>W</kbd></span>
+                <span class="control-hint">Right: <kbd>UP</kbd></span>
+            </div>
+        </div>
+
+        <!-- BRASKET: Local game -->
+        <div class="screen" id="brLocalGame">
+            <button class="back-btn" onclick="exitBrLocal()">&#8592;</button>
+            <div class="iframe-wrap" id="brIframeWrap">
+                <iframe id="brIframe" src="" allowfullscreen></iframe>
+            </div>
+            <div class="control-hints">
+                <span class="control-hint">Left player: <kbd>W</kbd></span>
+                <span class="control-hint">Right player: <kbd>UP</kbd></span>
+            </div>
+            <button class="btn btn-pink btn-small" onclick="exitBrLocal()" style="margin-top:8px;">EXIT</button>
+        </div>
+
+        <!-- BRASKET: Online menu -->
+        <div class="screen" id="brOnlineMenu">
+            <button class="back-btn" onclick="showScreen('brModeScreen')">&#8592;</button>
+            <h2 style="color:#ff8800; font-size:0.8rem;">ONLINE</h2>
+
+            <input type="text" id="brPlayerName" placeholder="Your name" maxlength="15" style="border-color:#ff8800; color:#ff8800; background:rgba(255,136,0,0.05);">
+
+            <button class="btn btn-green" style="border-color:#ff8800; color:#ff8800;" onclick="brCreateRoom()">CREATE ROOM</button>
+            <div class="or-text">-- or --</div>
+            <input type="text" id="brJoinCode" placeholder="Room code" maxlength="6" style="text-transform:uppercase; border-color:#ff8800; color:#ff8800; background:rgba(255,136,0,0.05);">
+            <button class="btn btn-cyan" style="border-color:#ff8800; color:#ff8800;" onclick="brJoinRoom()">JOIN ROOM</button>
+
+            <p style="color:#888; font-size:0.8rem; margin-top:12px;">Your side:</p>
+            <div class="side-select">
+                <button class="side-btn selected" onclick="brOnlineSetSide('left')" id="brOnLeftBtn">LEFT</button>
+                <button class="side-btn" onclick="brOnlineSetSide('right')" id="brOnRightBtn">RIGHT</button>
+            </div>
+
+            <p class="error" id="brMenuError"></p>
+        </div>
+
+        <!-- BRASKET: Online lobby -->
+        <div class="screen" id="brOnlineLobby">
+            <h2 style="color:#ff8800; font-size:0.8rem;">LOBBY</h2>
+            <p style="color:#666; font-size:0.8rem;">Room Code:</p>
+            <div class="room-code" style="border-color:#ff8800; color:#ff8800; background:rgba(255,136,0,0.05); text-shadow:0 0 20px rgba(255,136,0,0.5);" id="brDisplayRoomCode">----</div>
+            <div class="player-list" id="brPlayerListWrap">
+                <h3 style="color:#ff8800;">Players</h3>
+                <div id="brPlayerListContainer"></div>
+            </div>
+            <button class="btn btn-green" style="border-color:#ff8800; color:#ff8800;" id="brStartBtn" onclick="brStartOnlineGame()" style="display:none;">START</button>
+            <p class="status waiting" id="brLobbyStatus">Waiting for opponent...</p>
+            <button class="btn btn-pink btn-small" onclick="brLeaveRoom()">LEAVE</button>
+        </div>
+
+        <!-- BRASKET: Online game -->
+        <div class="screen" id="brOnlineGame">
+            <div class="score-display">
+                <span class="score-left" id="brScoreLeft">0</span>
+                <span class="score-sep">:</span>
+                <span class="score-right" id="brScoreRight">0</span>
+            </div>
+            <div class="game-canvas-wrap" id="brCanvasWrap">
+                <canvas id="brCanvas" width="800" height="500"></canvas>
+                <div class="modifier-announce" id="brModAnnounce"></div>
+            </div>
+            <p style="color:#444; font-size:0.7rem; margin-top:6px;">Press <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.4rem;">SPACE</kbd> or <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.4rem;">W</kbd> or <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.4rem;">UP</kbd> to jump</p>
+            <button class="btn btn-pink btn-small" onclick="brLeaveOnlineGame()" style="margin-top:8px;">LEAVE</button>
+        </div>
+
+        <!-- BRASKET: Online game over -->
+        <div class="screen" id="brOnlineEnd">
+            <h2 style="color:#ff8800; font-size:0.8rem;">GAME OVER</h2>
+            <div class="score-display">
+                <span class="score-left" id="brEndScoreLeft">0</span>
+                <span class="score-sep">:</span>
+                <span class="score-right" id="brEndScoreRight">0</span>
+            </div>
+            <p id="brEndMessage" style="color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.7rem; margin:16px 0;"></p>
+            <button class="btn btn-green" style="border-color:#ff8800; color:#ff8800;" id="brPlayAgainBtn" onclick="brPlayAgain()" style="display:none;">PLAY AGAIN</button>
+            <button class="btn btn-pink btn-small" onclick="brLeaveRoom()">LEAVE</button>
+            <p class="status waiting" id="brEndStatus" style="display:none;">Waiting for host...</p>
         </div>
     </div>
 
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAOsYfd3vBVUzHqysG_oXPKi7yXrI-hVrE",
-            authDomain: "imposter-game-777f3.firebaseapp.com",
-            databaseURL: "https://imposter-game-777f3-default-rtdb.firebaseio.com",
-            projectId: "imposter-game-777f3",
-            storageBucket: "imposter-game-777f3.firebasestorage.app",
-            messagingSenderId: "791197389028",
-            appId: "1:791197389028:web:72282811d5e08040a7dcf1"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    // ============================================================
+    // FIREBASE INIT
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyAOsYfd3vBVUzHqysG_oXPKi7yXrI-hVrE",
+        authDomain: "imposter-game-777f3.firebaseapp.com",
+        databaseURL: "https://imposter-game-777f3-default-rtdb.firebaseio.com",
+        projectId: "imposter-game-777f3",
+        storageBucket: "imposter-game-777f3.firebasestorage.app",
+        messagingSenderId: "791197389028",
+        appId: "1:791197389028:web:72282811d5e08040a7dcf1"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-        // Default words - always start fresh with these
-        const defaultWords = ["Pizza", "Coffee", "Sushi", "Hamburger", "Ice cream", "Chocolate", "Sandwich", "Pasta", "Cookies", "Bacon", "Elephant", "Dolphin", "Penguin", "Giraffe", "Octopus", "Butterfly", "Tiger", "Kangaroo", "Shark", "Eagle", "Umbrella", "Backpack", "Sunglasses", "Headphones", "Flashlight", "Wallet", "Pillow", "Camera", "Skateboard", "Guitar", "Beach", "Library", "Restaurant", "Airport", "Stadium", "Hospital", "Museum", "Gym", "Theater", "Park", "Swimming", "Dancing", "Cooking", "Reading", "Painting", "Camping", "Shopping", "Singing", "Jogging", "Gaming", "Teacher", "Doctor", "Chef", "Firefighter", "Pilot", "Artist", "Scientist", "Musician", "Athlete", "Photographer"];
-        
-        // Session-only words (not saved to localStorage)
-        let singleModeWords = [...defaultWords];
-        let multiModeWords = [...defaultWords];
-        
-        // Shuffle queues - words get shuffled and used one by one
-        let singleWordQueue = [];
-        let multiWordQueue = [];
-        
-        // Shuffle array helper function
-        function shuffleArray(array) {
-            const shuffled = [...array];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled;
-        }
-        
-        // Get next word from single mode queue
-        function getNextSingleWord() {
-            if (singleWordQueue.length === 0) {
-                singleWordQueue = shuffleArray(singleModeWords);
-            }
-            return singleWordQueue.pop();
-        }
-        
-        // Get next word from multi mode queue (called by host)
-        function getNextMultiWord(wordList) {
-            if (multiWordQueue.length === 0) {
-                multiWordQueue = shuffleArray(wordList);
-            }
-            return multiWordQueue.pop();
-        }
+    // ============================================================
+    // NAVIGATION
+    // ============================================================
+    let currentScreen = 'landingScreen';
 
-        function parseWordsFromText(text) { return text.split(/[,\n]+/).map(w => w.trim()).filter(w => w.length > 0); }
-        function wordsToText(arr) { return arr.join('\n'); }
-        
-        function updateSingleWordCount() { 
-            const t = document.getElementById('singleWordTextarea'); 
-            if(t) document.getElementById('singleWordCount').textContent = parseWordsFromText(t.value).length + ' words'; 
-        }
-        function updateMultiWordCount() { 
-            const t = document.getElementById('multiWordTextarea'); 
-            if(t) document.getElementById('multiWordCount').textContent = parseWordsFromText(t.value).length + ' words'; 
-        }
-        
-        // Single mode: just update the local session variable
-        function updateSingleWords() {
-            const t = document.getElementById('singleWordTextarea');
-            singleModeWords = parseWordsFromText(t.value);
-            if(singleModeWords.length === 0) {
-                singleModeWords = [...defaultWords];
-                t.value = wordsToText(singleModeWords);
-            }
-            // Reset queue when words change
-            singleWordQueue = [];
-            updateSingleWordCount();
-        }
-        
-        function resetWordsSingle() { 
-            singleModeWords = [...defaultWords]; 
-            singleWordQueue = [];
-            document.getElementById('singleWordTextarea').value = wordsToText(singleModeWords); 
-            updateSingleWordCount(); 
-        }
-        
-        // Multi mode: save to Firebase room only
-        async function saveWordsMulti() { 
-            const t = document.getElementById('multiWordTextarea'); 
-            multiModeWords = parseWordsFromText(t.value); 
-            if(multiModeWords.length === 0) { 
-                multiModeWords = [...defaultWords]; 
-                t.value = wordsToText(multiModeWords); 
-            } 
-            // Reset queue when words change
-            multiWordQueue = [];
-            updateMultiWordCount(); 
-            if(roomRef) await roomRef.child('words').set(multiModeWords); 
-            alert('Words saved for this room!'); 
-        }
-        
-        async function resetWordsMulti() { 
-            multiModeWords = [...defaultWords]; 
-            multiWordQueue = [];
-            document.getElementById('multiWordTextarea').value = wordsToText(multiModeWords); 
-            updateMultiWordCount(); 
-            if(roomRef) await roomRef.child('words').set(multiModeWords); 
-        }
-        
-        function initSingleWordEditor() { 
-            // Always start with default words and fresh queue
-            singleModeWords = [...defaultWords];
-            singleWordQueue = [];
-            const t = document.getElementById('singleWordTextarea'); 
-            if(t) { t.value = wordsToText(singleModeWords); updateSingleWordCount(); } 
-        }
-        
-        function initMultiWordEditor() { 
-            const t = document.getElementById('multiWordTextarea'); 
-            if(t) { t.value = wordsToText(multiModeWords); updateMultiWordCount(); } 
-        }
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.back-btn').forEach(b => b.style.display = 'none');
+        const bb = document.getElementById(id).querySelector('.back-btn');
+        if (bb) bb.style.display = 'block';
+        currentScreen = id;
+    }
 
-        function toggleSingleWordEditor() {
-            const section = document.getElementById('singleWordEditorSection');
-            if(section.style.display === 'none') {
-                section.style.display = 'block';
-                document.getElementById('singleEditBtn').textContent = '📝 Hide Word List';
-            } else {
-                section.style.display = 'none';
-                document.getElementById('singleEditBtn').textContent = '📝 Edit Word List';
-            }
-        }
-        
-        function toggleMultiWordEditor() {
-            const section = document.getElementById('multiWordEditorSection');
-            if(section.style.display === 'none') {
-                section.style.display = 'block';
-                document.getElementById('multiEditBtn').textContent = '📝 Hide Word List';
-            } else {
-                section.style.display = 'none';
-                document.getElementById('multiEditBtn').textContent = '📝 Edit Word List';
-            }
-        }
+    // ============================================================
+    // IMPOSTER GAME (preserved logic)
+    // ============================================================
+    const defaultWords = ["Pizza","Coffee","Sushi","Hamburger","Ice cream","Chocolate","Sandwich","Pasta","Cookies","Bacon","Elephant","Dolphin","Penguin","Giraffe","Octopus","Butterfly","Tiger","Kangaroo","Shark","Eagle","Umbrella","Backpack","Sunglasses","Headphones","Flashlight","Wallet","Pillow","Camera","Skateboard","Guitar","Beach","Library","Restaurant","Airport","Stadium","Hospital","Museum","Gym","Theater","Park","Swimming","Dancing","Cooking","Reading","Painting","Camping","Shopping","Singing","Jogging","Gaming","Teacher","Doctor","Chef","Firefighter","Pilot","Artist","Scientist","Musician","Athlete","Photographer"];
 
-        function selectMode(mode) { 
-            if(mode === 'single') { 
-                showScreen('singleLobbyScreen'); 
-                initSingleWordEditor(); 
-            } else { 
-                showScreen('multiMenuScreen'); 
-            } 
-        }
-        
-        function backToModeSelect() { 
-            if(roomRef && playerId) { leaveRoom(); return; } 
-            showScreen('modeScreen'); 
-        }
-        
-        function showScreen(id) { 
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
-            document.getElementById(id).classList.add('active'); 
-            document.querySelectorAll('.back-btn').forEach(b => b.style.display = 'none'); 
-            const bb = document.getElementById(id).querySelector('.back-btn'); 
-            if(bb) bb.style.display = 'block'; 
-        }
+    let singleModeWords = [...defaultWords];
+    let multiModeWords = [...defaultWords];
+    let singleWordQueue = [];
+    let multiWordQueue = [];
 
-        let singlePlayerCount = 4, singleImposterIndex = 0, singleCurrentWord = "", singleRevealedCount = 0, singleCurrentBoxIndex = -1;
-        
-        function startSingleGame() { 
-            // Update words from textarea before starting
-            updateSingleWords();
-            singlePlayerCount = Math.min(20, Math.max(3, parseInt(document.getElementById('singlePlayerCount').value))); 
-            setupSingleRound(); 
-            showScreen('singleGameScreen'); 
-        }
-        
-        function setupSingleRound() { 
-            singleImposterIndex = Math.floor(Math.random() * singlePlayerCount); 
-            singleCurrentWord = getNextSingleWord();
-            singleRevealedCount = 0; 
-            const c = document.getElementById('singlePlayerBoxes'); 
-            c.innerHTML = ''; 
-            for(let i = 0; i < singlePlayerCount; i++) { 
-                const b = document.createElement('div'); 
-                b.className = 'player-box'; 
-                b.textContent = 'P' + (i+1); 
-                b.onclick = () => revealSingleRole(i); 
-                c.appendChild(b); 
-            } 
-            document.getElementById('singleEndButtons').style.display = 'none'; 
-        }
-        
-        function revealSingleRole(i) { 
-            const boxes = document.querySelectorAll('#singlePlayerBoxes .player-box'); 
-            if(boxes[i].classList.contains('revealed')) return; 
-            singleCurrentBoxIndex = i; 
-            const rt = document.getElementById('singleRoleText'); 
-            if(i === singleImposterIndex) { rt.textContent = 'IMPOSTER'; rt.className = 'role-text imposter'; } 
-            else { rt.textContent = singleCurrentWord; rt.className = 'role-text crewmate'; } 
-            document.getElementById('singleModal').style.display = 'flex'; 
-        }
-        
-        function closeSingleModal() { 
-            document.getElementById('singleModal').style.display = 'none'; 
-            const boxes = document.querySelectorAll('#singlePlayerBoxes .player-box'); 
-            boxes[singleCurrentBoxIndex].classList.add('revealed'); 
-            boxes[singleCurrentBoxIndex].textContent = '✓'; 
-            singleRevealedCount++; 
-            if(singleRevealedCount === singlePlayerCount) document.getElementById('singleEndButtons').style.display = 'flex'; 
-        }
-        
-        function newSingleRound() { setupSingleRound(); }
-        function backToSingleLobby() { showScreen('singleLobbyScreen'); }
+    function shuffleArray(arr) { const s=[...arr]; for(let i=s.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[s[i],s[j]]=[s[j],s[i]];} return s; }
+    function getNextSingleWord() { if(!singleWordQueue.length) singleWordQueue=shuffleArray(singleModeWords); return singleWordQueue.pop(); }
+    function getNextMultiWord(wl) { if(!multiWordQueue.length) multiWordQueue=shuffleArray(wl); return multiWordQueue.pop(); }
+    function parseWordsFromText(t) { return t.split(/[,\n]+/).map(w=>w.trim()).filter(w=>w.length>0); }
+    function wordsToText(a) { return a.join('\n'); }
+    function updateSingleWordCount() { const t=document.getElementById('singleWordTextarea'); if(t) document.getElementById('singleWordCount').textContent=parseWordsFromText(t.value).length+' words'; }
+    function updateMultiWordCount() { const t=document.getElementById('multiWordTextarea'); if(t) document.getElementById('multiWordCount').textContent=parseWordsFromText(t.value).length+' words'; }
 
-        let playerId = null, playerName = '', roomCode = null, isHost = false, roomRef = null, currentScreen = 'homeScreen';
-        function generatePlayerId() { return 'player_' + Math.random().toString(36).substr(2, 9); }
-        function generateRoomCode() { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = ''; for(let i = 0; i < 4; i++) c += chars.charAt(Math.floor(Math.random() * chars.length)); return c; }
+    function updateSingleWords() {
+        const t=document.getElementById('singleWordTextarea');
+        singleModeWords=parseWordsFromText(t.value);
+        if(!singleModeWords.length){singleModeWords=[...defaultWords];t.value=wordsToText(singleModeWords);}
+        singleWordQueue=[];
+        updateSingleWordCount();
+    }
+    function resetWordsSingle() { singleModeWords=[...defaultWords]; singleWordQueue=[]; document.getElementById('singleWordTextarea').value=wordsToText(singleModeWords); updateSingleWordCount(); }
+    async function saveWordsMulti() {
+        const t=document.getElementById('multiWordTextarea');
+        multiModeWords=parseWordsFromText(t.value);
+        if(!multiModeWords.length){multiModeWords=[...defaultWords];t.value=wordsToText(multiModeWords);}
+        multiWordQueue=[];
+        updateMultiWordCount();
+        if(roomRef) await roomRef.child('words').set(multiModeWords);
+    }
+    async function resetWordsMulti() { multiModeWords=[...defaultWords]; multiWordQueue=[]; document.getElementById('multiWordTextarea').value=wordsToText(multiModeWords); updateMultiWordCount(); if(roomRef) await roomRef.child('words').set(multiModeWords); }
+    function initSingleWordEditor() { singleModeWords=[...defaultWords]; singleWordQueue=[]; const t=document.getElementById('singleWordTextarea'); if(t){t.value=wordsToText(singleModeWords);updateSingleWordCount();} }
+    function initMultiWordEditor() { const t=document.getElementById('multiWordTextarea'); if(t){t.value=wordsToText(multiModeWords);updateMultiWordCount();} }
+    function toggleSingleWordEditor() { const s=document.getElementById('singleWordEditorSection'); s.style.display=s.style.display==='none'?'block':'none'; }
+    function toggleMultiWordEditor() { const s=document.getElementById('multiWordEditorSection'); s.style.display=s.style.display==='none'?'block':'none'; }
 
-        async function createRoom() {
-            playerName = document.getElementById('playerName').value.trim();
-            if(!playerName) { document.getElementById('menuError').textContent = 'Please enter your name!'; return; }
-            playerId = generatePlayerId(); roomCode = generateRoomCode(); isHost = true;
-            roomRef = db.ref('rooms/' + roomCode);
-            const snap = await roomRef.once('value');
-            if(snap.exists()) { roomCode = generateRoomCode(); roomRef = db.ref('rooms/' + roomCode); }
-            
-            // Always start room with default words
-            multiModeWords = [...defaultWords];
-            
-            await roomRef.set({ 
-                host: playerId, 
-                status: 'lobby', 
-                players: { [playerId]: { name: playerName, isHost: true } }, 
-                gameData: null, 
-                words: multiModeWords, 
-                createdAt: firebase.database.ServerValue.TIMESTAMP 
-            });
-            roomRef.child('players/' + playerId).onDisconnect().remove();
-            setupRoomListeners();
-            document.getElementById('displayRoomCode').textContent = roomCode;
-            document.getElementById('startGameBtn').style.display = 'block';
-            document.getElementById('lobbyStatus').style.display = 'none';
-            initMultiWordEditor();
-            showScreen('multiLobbyScreen'); currentScreen = 'multiLobbyScreen';
+    function selectImpMode(mode) { if(mode==='single'){showScreen('singleLobbyScreen');initSingleWordEditor();}else{showScreen('multiMenuScreen');} }
+
+    // Single device game
+    let singlePlayerCount=4, singleImposterIndex=0, singleCurrentWord="", singleRevealedCount=0, singleCurrentBoxIndex=-1;
+
+    function startSingleGame() {
+        updateSingleWords();
+        singlePlayerCount=Math.min(20,Math.max(3,parseInt(document.getElementById('singlePlayerCount').value)));
+        setupSingleRound();
+        showScreen('singleGameScreen');
+    }
+    function setupSingleRound() {
+        singleImposterIndex=Math.floor(Math.random()*singlePlayerCount);
+        singleCurrentWord=getNextSingleWord();
+        singleRevealedCount=0;
+        const c=document.getElementById('singlePlayerBoxes'); c.innerHTML='';
+        for(let i=0;i<singlePlayerCount;i++){
+            const b=document.createElement('div'); b.className='player-box'; b.textContent='P'+(i+1);
+            b.onclick=()=>revealSingleRole(i); c.appendChild(b);
         }
+        document.getElementById('singleEndButtons').style.display='none';
+    }
+    function revealSingleRole(i) {
+        const boxes=document.querySelectorAll('#singlePlayerBoxes .player-box');
+        if(boxes[i].classList.contains('revealed')) return;
+        singleCurrentBoxIndex=i;
+        const rt=document.getElementById('singleRoleText');
+        if(i===singleImposterIndex){rt.textContent='IMPOSTER';rt.className='role-text imposter';}
+        else{rt.textContent=singleCurrentWord;rt.className='role-text crewmate';}
+        document.getElementById('singleModal').style.display='flex';
+    }
+    function closeSingleModal() {
+        document.getElementById('singleModal').style.display='none';
+        const boxes=document.querySelectorAll('#singlePlayerBoxes .player-box');
+        boxes[singleCurrentBoxIndex].classList.add('revealed'); boxes[singleCurrentBoxIndex].textContent='OK';
+        singleRevealedCount++;
+        if(singleRevealedCount===singlePlayerCount) document.getElementById('singleEndButtons').style.display='flex';
+    }
+    function newSingleRound() { setupSingleRound(); }
 
-        async function joinRoom() {
-            playerName = document.getElementById('playerName').value.trim();
-            const code = document.getElementById('joinCode').value.trim().toUpperCase();
-            if(!playerName) { document.getElementById('menuError').textContent = 'Please enter your name!'; return; }
-            if(!code || code.length !== 4) { document.getElementById('menuError').textContent = 'Please enter a valid 4-letter room code!'; return; }
-            roomCode = code; roomRef = db.ref('rooms/' + roomCode);
-            const snap = await roomRef.once('value');
-            if(!snap.exists()) { document.getElementById('menuError').textContent = 'Room not found!'; return; }
-            const rd = snap.val();
-            if(rd.status !== 'lobby') { document.getElementById('menuError').textContent = 'Game already in progress!'; return; }
-            playerId = generatePlayerId(); isHost = false;
-            
-            // Load room's words
-            multiModeWords = rd.words || [...defaultWords];
-            
-            await roomRef.child('players/' + playerId).set({ name: playerName, isHost: false });
-            roomRef.child('players/' + playerId).onDisconnect().remove();
-            setupRoomListeners();
-            document.getElementById('displayRoomCode').textContent = roomCode;
-            document.getElementById('startGameBtn').style.display = 'none';
-            document.getElementById('lobbyStatus').style.display = 'block';
-            initMultiWordEditor();
-            showScreen('multiLobbyScreen'); currentScreen = 'multiLobbyScreen';
-        }
+    // Multiplayer
+    let playerId=null, playerName='', roomCode=null, isHost=false, roomRef=null;
+    function generatePlayerId() { return 'p_'+Math.random().toString(36).substr(2,9); }
+    function generateRoomCode() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<4;i++) r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
 
-        function setupRoomListeners() {
-            roomRef.on('value', (snap) => {
-                if(!snap.exists()) { alert('Room was closed!'); showScreen('multiMenuScreen'); currentScreen = 'multiMenuScreen'; roomRef = null; return; }
-                const data = snap.val();
-                
-                // Sync words from Firebase for this room
-                if(data.words && Array.isArray(data.words)) { 
-                    multiModeWords = data.words; 
-                    const t = document.getElementById('multiWordTextarea'); 
-                    if(t && currentScreen === 'multiLobbyScreen') { 
-                        t.value = wordsToText(multiModeWords); 
-                        updateMultiWordCount(); 
-                    } 
-                }
-                
-                if(data.host === playerId) isHost = true;
-                updateLobbyPlayerList(data.players);
-                
-                // Handle all state transitions
-                if(data.status === 'playing' && (currentScreen === 'multiLobbyScreen' || currentScreen === 'multiEndScreen')) { 
-                    showMultiGameScreen(data); 
-                }
-                else if(data.status === 'playing' && currentScreen === 'multiGameScreen') { 
-                    updateVotingUI(data); 
-                }
-                else if(data.status === 'results' && currentScreen === 'multiGameScreen') { 
-                    showMultiEndScreen(data); 
-                }
-                else if(data.status === 'lobby' && (currentScreen === 'multiEndScreen' || currentScreen === 'multiGameScreen')) { 
-                    showMultiLobbyFromEnd(data); 
-                }
-                
-                if(currentScreen === 'multiEndScreen') updateEndScreenButtons();
-            });
-        }
+    async function createRoom() {
+        playerName=document.getElementById('playerName').value.trim();
+        if(!playerName){document.getElementById('menuError').textContent='Enter your name!';return;}
+        playerId=generatePlayerId(); roomCode=generateRoomCode(); isHost=true;
+        roomRef=db.ref('rooms/'+roomCode);
+        const snap=await roomRef.once('value');
+        if(snap.exists()){roomCode=generateRoomCode();roomRef=db.ref('rooms/'+roomCode);}
+        multiModeWords=[...defaultWords];
+        await roomRef.set({host:playerId,status:'lobby',players:{[playerId]:{name:playerName,isHost:true}},gameData:null,words:multiModeWords,createdAt:firebase.database.ServerValue.TIMESTAMP});
+        roomRef.child('players/'+playerId).onDisconnect().remove();
+        setupRoomListeners();
+        document.getElementById('displayRoomCode').textContent=roomCode;
+        document.getElementById('startGameBtn').style.display='block';
+        document.getElementById('lobbyStatus').style.display='none';
+        initMultiWordEditor();
+        showScreen('multiLobbyScreen');
+    }
 
-        function updateLobbyPlayerList(players) {
-            const c = document.getElementById('playerListContainer'); if(!c) return; c.innerHTML = '';
-            for(const [id, p] of Object.entries(players || {})) {
-                const d = document.createElement('div'); d.className = 'player-item';
-                if(p.isHost) d.classList.add('host'); if(id === playerId) d.classList.add('you');
-                d.textContent = p.name + (id === playerId ? ' (You)' : ''); c.appendChild(d);
-            }
-            const cnt = Object.keys(players || {}).length;
-            const btn = document.getElementById('startGameBtn');
-            if(btn && isHost) { btn.disabled = cnt < 3; btn.textContent = cnt < 3 ? 'Need 3+ Players' : 'Start Game'; }
-        }
+    async function joinRoom() {
+        playerName=document.getElementById('playerName').value.trim();
+        const code=document.getElementById('joinCode').value.trim().toUpperCase();
+        if(!playerName){document.getElementById('menuError').textContent='Enter your name!';return;}
+        if(!code||code.length!==4){document.getElementById('menuError').textContent='Enter a valid 4-letter code!';return;}
+        roomCode=code; roomRef=db.ref('rooms/'+roomCode);
+        const snap=await roomRef.once('value');
+        if(!snap.exists()){document.getElementById('menuError').textContent='Room not found!';return;}
+        const rd=snap.val();
+        if(rd.status!=='lobby'){document.getElementById('menuError').textContent='Game already started!';return;}
+        playerId=generatePlayerId(); isHost=false;
+        multiModeWords=rd.words||[...defaultWords];
+        await roomRef.child('players/'+playerId).set({name:playerName,isHost:false});
+        roomRef.child('players/'+playerId).onDisconnect().remove();
+        setupRoomListeners();
+        document.getElementById('displayRoomCode').textContent=roomCode;
+        document.getElementById('startGameBtn').style.display='none';
+        document.getElementById('lobbyStatus').style.display='block';
+        initMultiWordEditor();
+        showScreen('multiLobbyScreen');
+    }
 
-        async function startMultiGame() {
-            if(!isHost) return;
-            const snap = await roomRef.once('value'); const data = snap.val();
-            const playerIds = Object.keys(data.players);
-            if(playerIds.length < 3) { alert('Need at least 3 players!'); return; }
-            const impIdx = Math.floor(Math.random() * playerIds.length);
-            const imposterId = playerIds[impIdx];
-            const gameWords = data.words || multiModeWords;
-            const word = getNextMultiWord(gameWords);
-            const roles = {}, votes = {};
-            playerIds.forEach(id => { roles[id] = { isImposter: id === imposterId, word: id === imposterId ? null : word }; votes[id] = null; });
-            await roomRef.update({ gameData: { roles, word, imposterId, votes }, status: 'playing' });
-        }
-
-        function showMultiGameScreen(data) {
-            const myRole = data.gameData.roles[playerId];
-            const rc = document.getElementById('roleCard'), rt = document.getElementById('multiRoleText');
-            const title = document.getElementById('roleTitle'), label = document.getElementById('roleLabel');
-            if(myRole.isImposter) { 
-                rc.className = 'role-card imposter'; 
-                rt.textContent = 'IMPOSTER'; 
-                title.textContent = '🎭 YOUR ROLE';
-                label.style.display = 'block';
-                label.textContent = 'You are:';
-            }
-            else { 
-                rc.className = 'role-card crewmate'; 
-                rt.textContent = myRole.word; 
-                title.textContent = '🎭 YOUR WORD';
-                label.style.display = 'none';
-            }
-            updateVotingUI(data);
-            showScreen('multiGameScreen'); currentScreen = 'multiGameScreen';
-        }
-
-        function updateVotingUI(data) {
-            const c = document.getElementById('votePlayerList'); if(!c) return; c.innerHTML = '';
-            const players = data.players, votes = data.gameData.votes || {};
-            const playerIds = Object.keys(players), total = playerIds.length;
-            const voteCounts = {}; playerIds.forEach(id => voteCounts[id] = 0);
-            for(const [vid, vfor] of Object.entries(votes)) { if(vfor && voteCounts.hasOwnProperty(vfor)) voteCounts[vfor]++; }
-            const myVote = votes[playerId];
-            for(const [id, p] of Object.entries(players)) {
-                const d = document.createElement('div'); d.className = 'vote-player-item'; if(id === playerId) d.classList.add('you');
-                const info = document.createElement('div'); info.className = 'vote-player-info';
-                const name = document.createElement('span'); name.className = 'vote-player-name'; name.textContent = p.name + (id === playerId ? ' (You)' : ''); info.appendChild(name);
-                if(myVote === id) { const lbl = document.createElement('span'); lbl.className = 'your-vote-label'; lbl.textContent = '✓ Your vote'; info.appendChild(lbl); }
-                d.appendChild(info);
-                const cnt = document.createElement('span'); cnt.className = 'vote-count'; cnt.textContent = voteCounts[id]; d.appendChild(cnt);
-                if(id !== playerId) {
-                    const btn = document.createElement('button'); btn.className = 'vote-btn';
-                    if(myVote === id) { btn.classList.add('voted'); btn.textContent = 'Voted'; }
-                    else { btn.textContent = 'Vote'; }
-                    btn.onclick = () => castVote(id); d.appendChild(btn);
-                }
-                c.appendChild(d);
-            }
-            const votedCnt = Object.values(votes).filter(v => v !== null).length;
-            document.getElementById('voteStatus').textContent = votedCnt + '/' + total + ' players voted';
-            const majority = Math.floor(total / 2) + 1;
-            for(const [id, cnt] of Object.entries(voteCounts)) {
-                if(cnt >= majority && isHost) { roomRef.update({ status: 'results' }); break; }
-            }
-        }
-
-        async function castVote(targetId) { if(!roomRef || !playerId) return; await roomRef.child('gameData/votes/' + playerId).set(targetId); }
-
-        function showMultiEndScreen(data) {
-            const imposterId = data.gameData.imposterId;
-            const imposterName = data.players[imposterId]?.name || 'Unknown';
-            const word = data.gameData.word;
-            const votes = data.gameData.votes || {};
-            const voteCounts = {}; Object.keys(data.players).forEach(id => voteCounts[id] = 0);
-            for(const [vid, vfor] of Object.entries(votes)) { if(vfor && voteCounts.hasOwnProperty(vfor)) voteCounts[vfor]++; }
-            let maxVotes = 0, mostVotedId = null;
-            for(const [id, cnt] of Object.entries(voteCounts)) { if(cnt > maxVotes) { maxVotes = cnt; mostVotedId = id; } }
-            const caught = mostVotedId === imposterId;
-            document.getElementById('resultName').textContent = imposterName;
-            document.getElementById('resultWord').textContent = 'The word was: ' + word;
-            const rc = document.getElementById('resultCard'), rm = document.getElementById('resultMessage');
-            if(caught) { rc.className = 'result-card caught'; rm.textContent = '🎉 Imposter was caught!'; }
-            else { rc.className = 'result-card escaped'; rm.textContent = '😈 Imposter escaped!'; }
-            const c = document.getElementById('endPlayerList'); c.innerHTML = '';
-            for(const [id, p] of Object.entries(data.players)) {
-                const d = document.createElement('div'); d.className = 'vote-player-item';
-                if(id === imposterId) d.style.border = '2px solid #e94560';
-                const info = document.createElement('div'); info.className = 'vote-player-info';
-                const name = document.createElement('span'); name.className = 'vote-player-name';
-                name.textContent = p.name + (id === imposterId ? ' 🎭' : ''); info.appendChild(name); d.appendChild(info);
-                const cnt = document.createElement('span'); cnt.className = 'vote-count'; cnt.textContent = voteCounts[id] || 0; d.appendChild(cnt);
-                c.appendChild(d);
-            }
-            updateEndScreenButtons();
-            showScreen('multiEndScreen'); currentScreen = 'multiEndScreen';
-        }
-
-        function updateEndScreenButtons() {
-            if(isHost) { 
-                document.getElementById('newRoundBtn').style.display = 'block'; 
-                document.getElementById('backToLobbyBtn').style.display = 'block'; 
-                document.getElementById('leaveRoomEndBtn').style.display = 'none';
-                document.getElementById('endStatus').style.display = 'none'; 
-            }
-            else { 
-                document.getElementById('newRoundBtn').style.display = 'none'; 
-                document.getElementById('backToLobbyBtn').style.display = 'none'; 
-                document.getElementById('leaveRoomEndBtn').style.display = 'block';
-                document.getElementById('endStatus').style.display = 'block'; 
-            }
-        }
-
-        async function newMultiRound() {
-            if(!isHost) return;
-            const snap = await roomRef.once('value'); const data = snap.val();
-            const playerIds = Object.keys(data.players);
-            const impIdx = Math.floor(Math.random() * playerIds.length);
-            const imposterId = playerIds[impIdx];
-            const gameWords = data.words || multiModeWords;
-            const word = getNextMultiWord(gameWords);
-            const roles = {}, votes = {};
-            playerIds.forEach(id => { roles[id] = { isImposter: id === imposterId, word: id === imposterId ? null : word }; votes[id] = null; });
-            await roomRef.update({ gameData: { roles, word, imposterId, votes }, status: 'playing' });
-        }
-
-        async function backToMultiLobby() { if(!isHost) return; await roomRef.update({ gameData: null, status: 'lobby' }); }
-
-        function showMultiLobbyFromEnd(data) {
-            document.getElementById('displayRoomCode').textContent = roomCode;
-            if(isHost) { document.getElementById('startGameBtn').style.display = 'block'; document.getElementById('lobbyStatus').style.display = 'none'; }
-            else { document.getElementById('startGameBtn').style.display = 'none'; document.getElementById('lobbyStatus').style.display = 'block'; }
-            initMultiWordEditor();
-            showScreen('multiLobbyScreen'); currentScreen = 'multiLobbyScreen';
-        }
-
-        async function leaveRoom() {
-            if(roomRef && playerId) {
-                roomRef.off();
-                await roomRef.child('players/' + playerId).remove();
-                if(isHost) {
-                    const snap = await roomRef.child('players').once('value');
-                    const players = snap.val();
-                    if(players) { const newHostId = Object.keys(players)[0]; await roomRef.update({ host: newHostId }); await roomRef.child('players/' + newHostId + '/isHost').set(true); }
-                    else { await roomRef.remove(); }
-                }
-            }
-            playerId = null; roomCode = null; isHost = false; roomRef = null;
-            // Reset to default words and clear queue when leaving
-            multiModeWords = [...defaultWords];
-            multiWordQueue = [];
-            document.getElementById('menuError').textContent = '';
-            document.getElementById('playerName').value = '';
-            document.getElementById('joinCode').value = '';
-            showScreen('modeScreen'); currentScreen = 'multiMenuScreen';
-        }
-
-        document.getElementById('joinCode').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('singleWordTextarea').addEventListener('input', updateSingleWordCount);
-            document.getElementById('multiWordTextarea').addEventListener('input', updateMultiWordCount);
+    function setupRoomListeners() {
+        roomRef.on('value',(snap)=>{
+            if(!snap.exists()){alert('Room closed!');showScreen('multiMenuScreen');roomRef=null;return;}
+            const data=snap.val();
+            if(data.words&&Array.isArray(data.words)){multiModeWords=data.words;const t=document.getElementById('multiWordTextarea');if(t&&currentScreen==='multiLobbyScreen'){t.value=wordsToText(multiModeWords);updateMultiWordCount();}}
+            if(data.host===playerId) isHost=true;
+            updateLobbyPlayerList(data.players);
+            if(data.status==='playing'&&(currentScreen==='multiLobbyScreen'||currentScreen==='multiEndScreen')) showMultiGameScreen(data);
+            else if(data.status==='playing'&&currentScreen==='multiGameScreen') updateVotingUI(data);
+            else if(data.status==='results'&&currentScreen==='multiGameScreen') showMultiEndScreen(data);
+            else if(data.status==='lobby'&&(currentScreen==='multiEndScreen'||currentScreen==='multiGameScreen')) showMultiLobbyFromEnd(data);
+            if(currentScreen==='multiEndScreen') updateEndScreenButtons();
         });
+    }
+
+    function updateLobbyPlayerList(players) {
+        const c=document.getElementById('playerListContainer'); if(!c)return; c.innerHTML='';
+        for(const[id,p]of Object.entries(players||{})){
+            const d=document.createElement('div'); d.className='player-item';
+            if(p.isHost) d.classList.add('host'); if(id===playerId) d.classList.add('you');
+            d.textContent=p.name+(id===playerId?' (You)':''); c.appendChild(d);
+        }
+        const cnt=Object.keys(players||{}).length;
+        const btn=document.getElementById('startGameBtn');
+        if(btn&&isHost){btn.disabled=cnt<3;btn.textContent=cnt<3?'NEED 3+':'START GAME';}
+    }
+
+    async function startMultiGame() {
+        if(!isHost)return;
+        const snap=await roomRef.once('value');const data=snap.val();
+        const pids=Object.keys(data.players);
+        if(pids.length<3){alert('Need 3+ players!');return;}
+        const impIdx=Math.floor(Math.random()*pids.length);
+        const impId=pids[impIdx];
+        const gw=data.words||multiModeWords;
+        const word=getNextMultiWord(gw);
+        const roles={},votes={};
+        pids.forEach(id=>{roles[id]={isImposter:id===impId,word:id===impId?null:word};votes[id]=null;});
+        await roomRef.update({gameData:{roles,word,imposterId:impId,votes},status:'playing'});
+    }
+
+    function showMultiGameScreen(data) {
+        const my=data.gameData.roles[playerId];
+        const rc=document.getElementById('roleCard'),rt=document.getElementById('multiRoleText');
+        const title=document.getElementById('roleTitle'),label=document.getElementById('roleLabel');
+        if(my.isImposter){rc.className='role-card imposter';rt.textContent='IMPOSTER';title.textContent='YOUR ROLE';label.style.display='block';label.textContent='You are:';}
+        else{rc.className='role-card crewmate';rt.textContent=my.word;title.textContent='YOUR WORD';label.style.display='none';}
+        updateVotingUI(data);
+        showScreen('multiGameScreen');
+    }
+
+    function updateVotingUI(data) {
+        const c=document.getElementById('votePlayerList'); if(!c)return; c.innerHTML='';
+        const players=data.players,votes=data.gameData.votes||{};
+        const pids=Object.keys(players),total=pids.length;
+        const vc={}; pids.forEach(id=>vc[id]=0);
+        for(const[vid,vfor]of Object.entries(votes)){if(vfor&&vc.hasOwnProperty(vfor))vc[vfor]++;}
+        const myVote=votes[playerId];
+        for(const[id,p]of Object.entries(players)){
+            const d=document.createElement('div'); d.className='vote-player-item'; if(id===playerId) d.classList.add('you');
+            const info=document.createElement('div'); info.className='vote-player-info';
+            const name=document.createElement('span'); name.className='vote-player-name'; name.textContent=p.name+(id===playerId?' (You)':''); info.appendChild(name);
+            if(myVote===id){const lbl=document.createElement('span');lbl.className='your-vote-label';lbl.textContent='[your vote]';info.appendChild(lbl);}
+            d.appendChild(info);
+            const cnt=document.createElement('span');cnt.className='vote-count';cnt.textContent=vc[id];d.appendChild(cnt);
+            if(id!==playerId){
+                const btn=document.createElement('button');btn.className='vote-btn';
+                if(myVote===id){btn.classList.add('voted');btn.textContent='VOTED';}else{btn.textContent='VOTE';}
+                btn.onclick=()=>castVote(id);d.appendChild(btn);
+            }
+            c.appendChild(d);
+        }
+        const votedCnt=Object.values(votes).filter(v=>v!==null).length;
+        document.getElementById('voteStatus').textContent=votedCnt+'/'+total+' voted';
+        const maj=Math.floor(total/2)+1;
+        for(const[id,cnt]of Object.entries(vc)){if(cnt>=maj&&isHost){roomRef.update({status:'results'});break;}}
+    }
+
+    async function castVote(tid) { if(!roomRef||!playerId)return; await roomRef.child('gameData/votes/'+playerId).set(tid); }
+
+    function showMultiEndScreen(data) {
+        const impId=data.gameData.imposterId;
+        const impName=data.players[impId]?.name||'Unknown';
+        const word=data.gameData.word;
+        const votes=data.gameData.votes||{};
+        const vc={}; Object.keys(data.players).forEach(id=>vc[id]=0);
+        for(const[vid,vfor]of Object.entries(votes)){if(vfor&&vc.hasOwnProperty(vfor))vc[vfor]++;}
+        let maxV=0,mostId=null;
+        for(const[id,cnt]of Object.entries(vc)){if(cnt>maxV){maxV=cnt;mostId=id;}}
+        const caught=mostId===impId;
+        document.getElementById('resultName').textContent=impName;
+        document.getElementById('resultWord').textContent='The word was: '+word;
+        const rc=document.getElementById('resultCard'),rm=document.getElementById('resultMessage');
+        if(caught){rc.className='result-card caught';rm.textContent='IMPOSTER CAUGHT!';}
+        else{rc.className='result-card escaped';rm.textContent='IMPOSTER ESCAPED!';}
+        const c=document.getElementById('endPlayerList');c.innerHTML='';
+        for(const[id,p]of Object.entries(data.players)){
+            const d=document.createElement('div');d.className='vote-player-item';
+            if(id===impId)d.style.border='2px solid #ff0066';
+            const info=document.createElement('div');info.className='vote-player-info';
+            const name=document.createElement('span');name.className='vote-player-name';
+            name.textContent=p.name+(id===impId?' [IMP]':'');info.appendChild(name);d.appendChild(info);
+            const cnt=document.createElement('span');cnt.className='vote-count';cnt.textContent=vc[id]||0;d.appendChild(cnt);
+            c.appendChild(d);
+        }
+        updateEndScreenButtons();
+        showScreen('multiEndScreen');
+    }
+
+    function updateEndScreenButtons() {
+        if(isHost){document.getElementById('newRoundBtn').style.display='block';document.getElementById('backToLobbyBtn').style.display='block';document.getElementById('leaveRoomEndBtn').style.display='none';document.getElementById('endStatus').style.display='none';}
+        else{document.getElementById('newRoundBtn').style.display='none';document.getElementById('backToLobbyBtn').style.display='none';document.getElementById('leaveRoomEndBtn').style.display='block';document.getElementById('endStatus').style.display='block';}
+    }
+
+    async function newMultiRound() {
+        if(!isHost)return;
+        const snap=await roomRef.once('value');const data=snap.val();
+        const pids=Object.keys(data.players);
+        const impIdx=Math.floor(Math.random()*pids.length);
+        const impId=pids[impIdx];
+        const gw=data.words||multiModeWords;
+        const word=getNextMultiWord(gw);
+        const roles={},votes={};
+        pids.forEach(id=>{roles[id]={isImposter:id===impId,word:id===impId?null:word};votes[id]=null;});
+        await roomRef.update({gameData:{roles,word,imposterId:impId,votes},status:'playing'});
+    }
+
+    async function backToMultiLobby() { if(!isHost)return; await roomRef.update({gameData:null,status:'lobby'}); }
+
+    function showMultiLobbyFromEnd(data) {
+        document.getElementById('displayRoomCode').textContent=roomCode;
+        if(isHost){document.getElementById('startGameBtn').style.display='block';document.getElementById('lobbyStatus').style.display='none';}
+        else{document.getElementById('startGameBtn').style.display='none';document.getElementById('lobbyStatus').style.display='block';}
+        initMultiWordEditor();
+        showScreen('multiLobbyScreen');
+    }
+
+    async function leaveRoom() {
+        if(roomRef&&playerId){
+            roomRef.off();
+            await roomRef.child('players/'+playerId).remove();
+            if(isHost){
+                const snap=await roomRef.child('players').once('value');
+                const players=snap.val();
+                if(players){const nid=Object.keys(players)[0];await roomRef.update({host:nid});await roomRef.child('players/'+nid+'/isHost').set(true);}
+                else{await roomRef.remove();}
+            }
+        }
+        playerId=null;roomCode=null;isHost=false;roomRef=null;
+        multiModeWords=[...defaultWords];multiWordQueue=[];
+        document.getElementById('menuError').textContent='';
+        document.getElementById('playerName').value='';
+        document.getElementById('joinCode').value='';
+        showScreen('impModeScreen');
+    }
+
+    // ============================================================
+    // BRASKET HANDOM: LOCAL
+    // ============================================================
+    let brLocalPlayers = 1;
+    let brLocalSide = 'left';
+
+    function brSetPlayerCount(n) {
+        brLocalPlayers = n;
+        document.getElementById('br1PBtn').classList.toggle('selected', n===1);
+        document.getElementById('br2PBtn').classList.toggle('selected', n===2);
+        // Show side select only for 1P
+        document.getElementById('brSideSelect').style.display = n===1 ? 'flex' : 'none';
+        document.getElementById('brSideLabel').style.display = n===1 ? 'block' : 'none';
+    }
+
+    function brSetSide(s) {
+        brLocalSide = s;
+        document.getElementById('brLeftBtn').classList.toggle('selected', s==='left');
+        document.getElementById('brRightBtn').classList.toggle('selected', s==='right');
+    }
+
+    function startBrLocal() {
+        document.getElementById('brIframe').src = 'https://2048taylorswift.github.io/basketrandom/';
+        showScreen('brLocalGame');
+    }
+
+    function exitBrLocal() {
+        document.getElementById('brIframe').src = '';
+        showScreen('brLocalSetup');
+    }
+
+    // ============================================================
+    // BRASKET HANDOM: ONLINE (Canvas game + Firebase)
+    // ============================================================
+    let brOnlineSide = 'left';
+    let brOnlinePlayerId = null;
+    let brOnlinePlayerName = '';
+    let brOnlineRoomCode = null;
+    let brOnlineIsHost = false;
+    let brOnlineRoomRef = null;
+    let brGameLoop = null;
+    let brGameActive = false;
+
+    // Game constants
+    const CW = 800, CH = 500;
+    const GROUND_Y = CH - 40;
+    const HOOP_Y = 100;
+    const HOOP_LEFT_X = 70;
+    const HOOP_RIGHT_X = CW - 70;
+    const BALL_R = 14;
+    const PW = 36, PH = 56;
+    const WIN_SCORE = 5;
+
+    // Game state
+    let gs = null;
+    let brKeys = {};
+    let brModTimer = 0;
+    let brModName = '';
+    let brModShowTimer = 0;
+    let brScoreFlash = 0;
+    let brLastSyncTime = 0;
+
+    const MODIFIERS = [
+        { name: 'MEGA BALL', apply: s => { s.mod.ballScale = 2; } },
+        { name: 'TINY BALL', apply: s => { s.mod.ballScale = 0.5; } },
+        { name: 'LOW GRAVITY', apply: s => { s.mod.gravity = 0.2; } },
+        { name: 'HIGH GRAVITY', apply: s => { s.mod.gravity = 1.0; } },
+        { name: 'GIANT PLAYERS', apply: s => { s.mod.playerScale = 1.6; } },
+        { name: 'TINY PLAYERS', apply: s => { s.mod.playerScale = 0.6; } },
+        { name: 'SUPER BOUNCE', apply: s => { s.mod.bounce = 0.95; } },
+        { name: 'NORMAL', apply: s => { s.mod = { gravity: 0.45, ballScale: 1, playerScale: 1, bounce: 0.7 }; } },
+    ];
+
+    function initGameState() {
+        return {
+            p: [
+                { x: 180, y: GROUND_Y - PH, vy: 0, jumping: false },
+                { x: CW - 180 - PW, y: GROUND_Y - PH, vy: 0, jumping: false }
+            ],
+            ball: { x: CW / 2, y: 200, vx: (Math.random() - 0.5) * 3, vy: -2 },
+            score: [0, 0],
+            mod: { gravity: 0.45, ballScale: 1, playerScale: 1, bounce: 0.7 },
+            inputs: [false, false],
+            status: 'playing',
+            winner: -1
+        };
+    }
+
+    function resetBall(state) {
+        state.ball.x = CW / 2;
+        state.ball.y = 200;
+        state.ball.vx = (Math.random() - 0.5) * 4;
+        state.ball.vy = -3;
+        state.p[0].x = 180; state.p[0].y = GROUND_Y - PH * state.mod.playerScale; state.p[0].vy = 0; state.p[0].jumping = false;
+        state.p[1].x = CW - 180 - PW * state.mod.playerScale; state.p[1].y = GROUND_Y - PH * state.mod.playerScale; state.p[1].vy = 0; state.p[1].jumping = false;
+    }
+
+    function updateGame(state, dt) {
+        if (state.status !== 'playing') return;
+
+        const g = state.mod.gravity;
+        const bs = state.mod.ballScale;
+        const ps = state.mod.playerScale;
+        const bounce = state.mod.bounce;
+        const br = BALL_R * bs;
+        const pw = PW * ps;
+        const ph = PH * ps;
+
+        // Player physics
+        for (let i = 0; i < 2; i++) {
+            const p = state.p[i];
+
+            // Auto walk toward ball
+            const pcx = p.x + pw / 2;
+            const diff = state.ball.x - pcx;
+            const walkSpeed = 1.5;
+            if (Math.abs(diff) > pw) {
+                p.x += Math.sign(diff) * walkSpeed;
+            }
+
+            // Jump input
+            if (state.inputs[i] && !p.jumping) {
+                p.vy = -11 - Math.random() * 2;
+                p.jumping = true;
+                // Kick toward ball when jumping
+                const dx = state.ball.x - pcx;
+                const dy = state.ball.y - (p.y + ph / 2);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < pw * 2 + br) {
+                    const force = 9 + Math.random() * 3;
+                    const angle = Math.atan2(dy - ph, dx);
+                    state.ball.vx += Math.cos(angle) * force * 0.5;
+                    state.ball.vy += Math.sin(angle) * force * 0.3 - 4;
+                }
+            }
+
+            // Gravity
+            p.vy += g;
+            p.y += p.vy;
+
+            // Ground
+            if (p.y >= GROUND_Y - ph) {
+                p.y = GROUND_Y - ph;
+                p.vy = 0;
+                p.jumping = false;
+            }
+
+            // Walls
+            p.x = Math.max(5, Math.min(CW - pw - 5, p.x));
+        }
+
+        // Ball physics
+        state.ball.vy += g;
+        state.ball.x += state.ball.vx;
+        state.ball.y += state.ball.vy;
+
+        // Ball-player collision
+        for (let i = 0; i < 2; i++) {
+            const p = state.p[i];
+            const dx = state.ball.x - (p.x + pw / 2);
+            const dy = state.ball.y - (p.y + ph / 3);
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const minDist = br + pw * 0.6;
+            if (dist < minDist && dist > 0) {
+                const nx = dx / dist, ny = dy / dist;
+                const force = 8 + Math.abs(p.vy) * 0.5;
+                state.ball.vx = nx * force + (Math.random() - 0.5) * 2;
+                state.ball.vy = ny * force - 3;
+                // Push ball out
+                state.ball.x = (p.x + pw / 2) + nx * minDist;
+                state.ball.y = (p.y + ph / 3) + ny * minDist;
+            }
+        }
+
+        // Ball-ground
+        if (state.ball.y + br >= GROUND_Y) {
+            state.ball.y = GROUND_Y - br;
+            state.ball.vy *= -bounce;
+            state.ball.vx *= 0.92;
+        }
+
+        // Ball-ceiling
+        if (state.ball.y - br <= 0) {
+            state.ball.y = br;
+            state.ball.vy *= -bounce;
+        }
+
+        // Ball-walls
+        if (state.ball.x - br <= 0) { state.ball.x = br; state.ball.vx *= -bounce; }
+        if (state.ball.x + br >= CW) { state.ball.x = CW - br; state.ball.vx *= -bounce; }
+
+        // Damping
+        state.ball.vx *= 0.998;
+
+        // Scoring - LEFT hoop (ball going down through the hoop scores for RIGHT player)
+        if (state.ball.x > HOOP_LEFT_X - 18 && state.ball.x < HOOP_LEFT_X + 18 &&
+            state.ball.y > HOOP_Y && state.ball.y < HOOP_Y + 35 && state.ball.vy > 1) {
+            state.score[1]++;
+            brScoreFlash = 30;
+            if (state.score[1] >= WIN_SCORE) { state.status = 'ended'; state.winner = 1; }
+            else resetBall(state);
+        }
+        // RIGHT hoop
+        if (state.ball.x > HOOP_RIGHT_X - 18 && state.ball.x < HOOP_RIGHT_X + 18 &&
+            state.ball.y > HOOP_Y && state.ball.y < HOOP_Y + 35 && state.ball.vy > 1) {
+            state.score[0]++;
+            brScoreFlash = 30;
+            if (state.score[0] >= WIN_SCORE) { state.status = 'ended'; state.winner = 0; }
+            else resetBall(state);
+        }
+
+        // Clear inputs after processing
+        state.inputs = [false, false];
+    }
+
+    function renderGame(ctx, state) {
+        const bs = state.mod.ballScale;
+        const ps = state.mod.playerScale;
+        const br = BALL_R * bs;
+        const pw = PW * ps;
+        const ph = PH * ps;
+
+        // Background
+        ctx.fillStyle = '#1a0e00';
+        ctx.fillRect(0, 0, CW, CH);
+
+        // Court floor
+        ctx.fillStyle = '#2a1800';
+        ctx.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
+        ctx.strokeStyle = '#3a2200';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(CW, GROUND_Y); ctx.stroke();
+
+        // Center line
+        ctx.strokeStyle = '#2a1800';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath(); ctx.moveTo(CW / 2, 0); ctx.lineTo(CW / 2, GROUND_Y); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Hoops
+        drawHoop(ctx, HOOP_LEFT_X, HOOP_Y, '#00d4ff');
+        drawHoop(ctx, HOOP_RIGHT_X, HOOP_Y, '#ff8800');
+
+        // Players
+        drawPlayer(ctx, state.p[0], pw, ph, '#00d4ff', '#006688');
+        drawPlayer(ctx, state.p[1], pw, ph, '#ff8800', '#884400');
+
+        // Ball
+        drawBall(ctx, state.ball.x, state.ball.y, br);
+
+        // Score flash
+        if (brScoreFlash > 0) {
+            ctx.fillStyle = `rgba(255,255,255,${brScoreFlash / 60})`;
+            ctx.fillRect(0, 0, CW, CH);
+            brScoreFlash--;
+        }
+    }
+
+    function drawHoop(ctx, x, y, color) {
+        // Backboard
+        ctx.fillStyle = '#333';
+        const bx = x < CW / 2 ? x - 25 : x + 5;
+        ctx.fillRect(bx, y - 20, 20, 60);
+
+        // Rim
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x - 16, y);
+        ctx.lineTo(x + 16, y);
+        ctx.stroke();
+
+        // Net lines
+        ctx.strokeStyle = `${color}44`;
+        ctx.lineWidth = 1;
+        for (let i = -12; i <= 12; i += 8) {
+            ctx.beginPath();
+            ctx.moveTo(x + i, y);
+            ctx.lineTo(x + i * 0.6, y + 30);
+            ctx.stroke();
+        }
+    }
+
+    function drawPlayer(ctx, p, pw, ph, color, darkColor) {
+        // Body
+        ctx.fillStyle = darkColor;
+        ctx.fillRect(p.x + 4, p.y + ph * 0.3, pw - 8, ph * 0.5);
+
+        // Jersey
+        ctx.fillStyle = color;
+        ctx.fillRect(p.x + 6, p.y + ph * 0.3, pw - 12, ph * 0.35);
+
+        // Head
+        ctx.fillStyle = '#dda';
+        ctx.beginPath();
+        ctx.arc(p.x + pw / 2, p.y + ph * 0.18, pw * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Legs
+        ctx.fillStyle = darkColor;
+        const legW = (pw - 12) / 2;
+        let legOffset = 0;
+        if (p.jumping) legOffset = Math.sin(Date.now() * 0.01) * 4;
+        ctx.fillRect(p.x + 6, p.y + ph * 0.8, legW, ph * 0.2 + legOffset);
+        ctx.fillRect(p.x + pw - 6 - legW, p.y + ph * 0.8, legW, ph * 0.2 - legOffset);
+    }
+
+    function drawBall(ctx, x, y, r) {
+        ctx.fillStyle = '#e87020';
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Lines
+        ctx.strokeStyle = '#c05010';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y - r);
+        ctx.lineTo(x, y + r);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - r, y);
+        ctx.lineTo(x + r, y);
+        ctx.stroke();
+    }
+
+    // Side selection
+    function brOnlineSetSide(s) {
+        brOnlineSide = s;
+        document.getElementById('brOnLeftBtn').classList.toggle('selected', s === 'left');
+        document.getElementById('brOnRightBtn').classList.toggle('selected', s === 'right');
+    }
+
+    // Create room
+    async function brCreateRoom() {
+        brOnlinePlayerName = document.getElementById('brPlayerName').value.trim();
+        if (!brOnlinePlayerName) { document.getElementById('brMenuError').textContent = 'Enter your name!'; return; }
+
+        brOnlinePlayerId = generatePlayerId();
+        brOnlineRoomCode = generateRoomCode();
+        brOnlineIsHost = true;
+
+        brOnlineRoomRef = db.ref('brRooms/' + brOnlineRoomCode);
+        const snap = await brOnlineRoomRef.once('value');
+        if (snap.exists()) { brOnlineRoomCode = generateRoomCode(); brOnlineRoomRef = db.ref('brRooms/' + brOnlineRoomCode); }
+
+        await brOnlineRoomRef.set({
+            host: brOnlinePlayerId,
+            status: 'lobby',
+            players: { [brOnlinePlayerId]: { name: brOnlinePlayerName, side: brOnlineSide } },
+            gameState: null,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        brOnlineRoomRef.child('players/' + brOnlinePlayerId).onDisconnect().remove();
+        setupBrRoomListeners();
+
+        document.getElementById('brDisplayRoomCode').textContent = brOnlineRoomCode;
+        document.getElementById('brStartBtn').style.display = 'block';
+        document.getElementById('brLobbyStatus').textContent = 'Waiting for opponent...';
+
+        showScreen('brOnlineLobby');
+    }
+
+    // Join room
+    async function brJoinRoom() {
+        brOnlinePlayerName = document.getElementById('brPlayerName').value.trim();
+        const code = document.getElementById('brJoinCode').value.trim().toUpperCase();
+        if (!brOnlinePlayerName) { document.getElementById('brMenuError').textContent = 'Enter your name!'; return; }
+        if (!code || code.length !== 4) { document.getElementById('brMenuError').textContent = 'Enter a valid 4-letter code!'; return; }
+
+        brOnlineRoomRef = db.ref('brRooms/' + code);
+        const snap = await brOnlineRoomRef.once('value');
+        if (!snap.exists()) { document.getElementById('brMenuError').textContent = 'Room not found!'; return; }
+
+        const rd = snap.val();
+        if (rd.status !== 'lobby') { document.getElementById('brMenuError').textContent = 'Game already started!'; return; }
+
+        const existingPlayers = Object.values(rd.players || {});
+        if (existingPlayers.length >= 2) { document.getElementById('brMenuError').textContent = 'Room is full!'; return; }
+
+        // Auto-assign opposite side if same side chosen
+        const hostSide = existingPlayers[0]?.side || 'left';
+        if (brOnlineSide === hostSide) {
+            brOnlineSide = hostSide === 'left' ? 'right' : 'left';
+            brOnlineSetSide(brOnlineSide);
+        }
+
+        brOnlinePlayerId = generatePlayerId();
+        brOnlineRoomCode = code;
+        brOnlineIsHost = false;
+
+        await brOnlineRoomRef.child('players/' + brOnlinePlayerId).set({ name: brOnlinePlayerName, side: brOnlineSide });
+        brOnlineRoomRef.child('players/' + brOnlinePlayerId).onDisconnect().remove();
+        setupBrRoomListeners();
+
+        document.getElementById('brDisplayRoomCode').textContent = brOnlineRoomCode;
+        document.getElementById('brStartBtn').style.display = 'none';
+        document.getElementById('brLobbyStatus').textContent = 'Waiting for host to start...';
+
+        showScreen('brOnlineLobby');
+    }
+
+    function setupBrRoomListeners() {
+        brOnlineRoomRef.on('value', (snap) => {
+            if (!snap.exists()) {
+                brCleanup();
+                alert('Room closed!');
+                showScreen('brOnlineMenu');
+                return;
+            }
+
+            const data = snap.val();
+            if (data.host === brOnlinePlayerId) brOnlineIsHost = true;
+
+            // Update lobby player list
+            const plc = document.getElementById('brPlayerListContainer');
+            if (plc && data.players) {
+                plc.innerHTML = '';
+                for (const [id, p] of Object.entries(data.players)) {
+                    const d = document.createElement('div');
+                    d.className = 'player-item';
+                    if (id === brOnlinePlayerId) d.classList.add('you');
+                    d.textContent = p.name + ' (' + p.side.toUpperCase() + ')' + (id === brOnlinePlayerId ? ' - You' : '');
+                    plc.appendChild(d);
+                }
+
+                const cnt = Object.keys(data.players).length;
+                if (brOnlineIsHost) {
+                    document.getElementById('brStartBtn').style.display = 'block';
+                    document.getElementById('brStartBtn').disabled = cnt < 2;
+                    document.getElementById('brStartBtn').textContent = cnt < 2 ? 'NEED 2 PLAYERS' : 'START';
+                }
+            }
+
+            // Game started
+            if (data.status === 'playing' && (currentScreen === 'brOnlineLobby' || currentScreen === 'brOnlineEnd')) {
+                brStartGameplay(data);
+            }
+
+            // Sync game state (client only)
+            if (data.status === 'playing' && currentScreen === 'brOnlineGame' && !brOnlineIsHost && data.gameState) {
+                gs = JSON.parse(JSON.stringify(data.gameState));
+                updateBrScoreUI();
+                if (gs.status === 'ended') {
+                    brShowEndScreen();
+                }
+            }
+
+            // Game ended
+            if (data.status === 'ended' && currentScreen === 'brOnlineGame') {
+                if (data.gameState) gs = JSON.parse(JSON.stringify(data.gameState));
+                brShowEndScreen();
+            }
+
+            // Back to lobby
+            if (data.status === 'lobby' && (currentScreen === 'brOnlineEnd' || currentScreen === 'brOnlineGame')) {
+                brStopGameLoop();
+                showScreen('brOnlineLobby');
+            }
+        });
+    }
+
+    // Get my player index (0=left, 1=right)
+    function getMyPlayerIndex() {
+        return brOnlineSide === 'left' ? 0 : 1;
+    }
+
+    async function brStartOnlineGame() {
+        if (!brOnlineIsHost) return;
+        const snap = await brOnlineRoomRef.once('value');
+        const data = snap.val();
+        if (Object.keys(data.players || {}).length < 2) return;
+
+        gs = initGameState();
+        brModTimer = 0;
+
+        await brOnlineRoomRef.update({
+            gameState: gs,
+            status: 'playing'
+        });
+    }
+
+    function brStartGameplay(data) {
+        if (data.gameState) gs = JSON.parse(JSON.stringify(data.gameState));
+        else gs = initGameState();
+
+        brModTimer = 0;
+        brScoreFlash = 0;
+        brGameActive = true;
+
+        showScreen('brOnlineGame');
+        updateBrScoreUI();
+
+        if (brOnlineIsHost) {
+            brStartGameLoop();
+        } else {
+            brStartRenderLoop();
+        }
+    }
+
+    function brStartGameLoop() {
+        const canvas = document.getElementById('brCanvas');
+        const ctx = canvas.getContext('2d');
+        let lastTime = performance.now();
+
+        brStopGameLoop();
+
+        function loop() {
+            if (!brGameActive) return;
+            const now = performance.now();
+            const dt = (now - lastTime) / 16.67;
+            lastTime = now;
+
+            // Modifier timer
+            brModTimer++;
+            if (brModTimer >= 900) { // ~15 seconds at 60fps
+                brModTimer = 0;
+                const mod = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
+                mod.apply(gs);
+                brModName = mod.name;
+                brModShowTimer = 120;
+            }
+            if (brModShowTimer > 0) brModShowTimer--;
+
+            updateGame(gs, dt);
+            renderGame(ctx, gs);
+
+            // Show modifier name
+            const announce = document.getElementById('brModAnnounce');
+            if (brModShowTimer > 0) {
+                announce.textContent = brModName;
+                announce.classList.add('show');
+            } else {
+                announce.classList.remove('show');
+            }
+
+            updateBrScoreUI();
+
+            // Sync to Firebase at ~15fps
+            if (now - brLastSyncTime > 66) {
+                brLastSyncTime = now;
+                if (brOnlineRoomRef) {
+                    brOnlineRoomRef.child('gameState').set(gs);
+                }
+            }
+
+            // Check win
+            if (gs.status === 'ended') {
+                brOnlineRoomRef.update({ gameState: gs, status: 'ended' });
+                brShowEndScreen();
+                return;
+            }
+
+            brGameLoop = requestAnimationFrame(loop);
+        }
+
+        brGameLoop = requestAnimationFrame(loop);
+    }
+
+    function brStartRenderLoop() {
+        const canvas = document.getElementById('brCanvas');
+        const ctx = canvas.getContext('2d');
+
+        brStopGameLoop();
+
+        function loop() {
+            if (!brGameActive) return;
+            if (gs) {
+                renderGame(ctx, gs);
+            }
+
+            const announce = document.getElementById('brModAnnounce');
+            if (brModShowTimer > 0) {
+                announce.textContent = brModName;
+                announce.classList.add('show');
+                brModShowTimer--;
+            } else {
+                announce.classList.remove('show');
+            }
+
+            brGameLoop = requestAnimationFrame(loop);
+        }
+
+        brGameLoop = requestAnimationFrame(loop);
+    }
+
+    function brStopGameLoop() {
+        if (brGameLoop) {
+            cancelAnimationFrame(brGameLoop);
+            brGameLoop = null;
+        }
+        brGameActive = false;
+    }
+
+    function updateBrScoreUI() {
+        if (!gs) return;
+        document.getElementById('brScoreLeft').textContent = gs.score[0];
+        document.getElementById('brScoreRight').textContent = gs.score[1];
+    }
+
+    function brShowEndScreen() {
+        brStopGameLoop();
+
+        document.getElementById('brEndScoreLeft').textContent = gs.score[0];
+        document.getElementById('brEndScoreRight').textContent = gs.score[1];
+
+        const myIdx = getMyPlayerIndex();
+        let msg = '';
+        if (gs.winner === myIdx) msg = 'YOU WIN!';
+        else if (gs.winner === -1) msg = 'DRAW!';
+        else msg = 'YOU LOSE!';
+        document.getElementById('brEndMessage').textContent = msg;
+
+        if (brOnlineIsHost) {
+            document.getElementById('brPlayAgainBtn').style.display = 'block';
+            document.getElementById('brEndStatus').style.display = 'none';
+        } else {
+            document.getElementById('brPlayAgainBtn').style.display = 'none';
+            document.getElementById('brEndStatus').style.display = 'block';
+        }
+
+        showScreen('brOnlineEnd');
+    }
+
+    async function brPlayAgain() {
+        if (!brOnlineIsHost || !brOnlineRoomRef) return;
+        gs = initGameState();
+        brModTimer = 0;
+        await brOnlineRoomRef.update({ gameState: gs, status: 'playing' });
+    }
+
+    function brCleanup() {
+        brStopGameLoop();
+        if (brOnlineRoomRef) brOnlineRoomRef.off();
+        brOnlineRoomRef = null;
+        brOnlinePlayerId = null;
+        brOnlineRoomCode = null;
+        brOnlineIsHost = false;
+        gs = null;
+    }
+
+    async function brLeaveRoom() {
+        if (brOnlineRoomRef && brOnlinePlayerId) {
+            brOnlineRoomRef.off();
+            await brOnlineRoomRef.child('players/' + brOnlinePlayerId).remove();
+            if (brOnlineIsHost) {
+                const snap = await brOnlineRoomRef.child('players').once('value');
+                const players = snap.val();
+                if (players) {
+                    const nid = Object.keys(players)[0];
+                    await brOnlineRoomRef.update({ host: nid });
+                } else {
+                    await brOnlineRoomRef.remove();
+                }
+            }
+        }
+        brCleanup();
+        document.getElementById('brMenuError').textContent = '';
+        document.getElementById('brPlayerName').value = '';
+        document.getElementById('brJoinCode').value = '';
+        showScreen('brModeScreen');
+    }
+
+    function brLeaveOnlineGame() {
+        brLeaveRoom();
+    }
+
+    // ============================================================
+    // INPUT HANDLING
+    // ============================================================
+    document.addEventListener('keydown', (e) => {
+        if (!brGameActive || !gs || gs.status !== 'playing') return;
+
+        const myIdx = getMyPlayerIndex();
+        const key = e.key.toLowerCase();
+
+        if (key === ' ' || key === 'w' || key === 'arrowup') {
+            e.preventDefault();
+            if (brOnlineIsHost) {
+                // Host: apply input directly
+                gs.inputs[myIdx] = true;
+            } else {
+                // Client: send input to Firebase
+                if (brOnlineRoomRef) {
+                    brOnlineRoomRef.child('gameState/inputs/' + myIdx).set(true);
+                }
+            }
+        }
+    });
+
+    // Host listens for client inputs
+    function setupInputListener() {
+        if (brOnlineRoomRef && brOnlineIsHost) {
+            const opponentIdx = getMyPlayerIndex() === 0 ? 1 : 0;
+            brOnlineRoomRef.child('gameState/inputs/' + opponentIdx).on('value', (snap) => {
+                if (snap.val() === true && gs && gs.status === 'playing') {
+                    gs.inputs[opponentIdx] = true;
+                }
+            });
+        }
+    }
+
+    // Override brStartOnlineGame to add input listener
+    const _origBrStart = brStartOnlineGame;
+    brStartOnlineGame = async function() {
+        await _origBrStart();
+        setupInputListener();
+    };
+
+    // Also set up input listener when game starts for host via room listener
+    const _origBrStartGameplay = brStartGameplay;
+    brStartGameplay = function(data) {
+        _origBrStartGameplay(data);
+        if (brOnlineIsHost) setupInputListener();
+    };
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.getElementById('joinCode').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+    document.getElementById('brJoinCode').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('singleWordTextarea').addEventListener('input', updateSingleWordCount);
+        document.getElementById('multiWordTextarea').addEventListener('input', updateMultiWordCount);
+    });
     </script>
 </body>
 </html>
