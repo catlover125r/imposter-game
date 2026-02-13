@@ -1167,15 +1167,32 @@
     let brGameLoop = null;
     let brGameActive = false;
 
-    // Game constants
+    // =============================================
+    // BRASKET HANDOM - GAME ENGINE (Basket Random style)
+    // =============================================
     const CW = 800, CH = 500;
-    const GROUND_Y = CH - 40;
-    const HOOP_Y = 100;
-    const HOOP_LEFT_X = 70;
-    const HOOP_RIGHT_X = CW - 70;
-    const BALL_R = 14;
-    const PW = 36, PH = 56;
+    const GROUND_Y = CH - 45;
     const WIN_SCORE = 5;
+
+    // Character dimensions (base)
+    const CHAR_H = 70;       // total height
+    const HEAD_R = 11;
+    const TORSO_LEN = 22;
+    const UPPER_LEG = 18;
+    const LOWER_LEG = 16;
+    const UPPER_ARM = 14;
+    const LOWER_ARM = 12;
+    const LIMB_W = 5;
+
+    // Hoop positions
+    const RIM_Y = 155;
+    const RIM_LEFT_X = 78;
+    const RIM_RIGHT_X = CW - 78;
+    const RIM_W = 36; // rim opening width
+    const BACKBOARD_H = 80;
+
+    // Ball
+    const BALL_R = 13;
 
     // Game state
     let gs = null;
@@ -1184,274 +1201,677 @@
     let brModName = '';
     let brModShowTimer = 0;
     let brScoreFlash = 0;
+    let brGoalPause = 0;
+    let brShake = 0;
     let brLastSyncTime = 0;
+    let brFrameCount = 0;
 
     const MODIFIERS = [
-        { name: 'MEGA BALL', apply: s => { s.mod.ballScale = 2; } },
-        { name: 'TINY BALL', apply: s => { s.mod.ballScale = 0.5; } },
-        { name: 'LOW GRAVITY', apply: s => { s.mod.gravity = 0.2; } },
-        { name: 'HIGH GRAVITY', apply: s => { s.mod.gravity = 1.0; } },
-        { name: 'GIANT PLAYERS', apply: s => { s.mod.playerScale = 1.6; } },
-        { name: 'TINY PLAYERS', apply: s => { s.mod.playerScale = 0.6; } },
-        { name: 'SUPER BOUNCE', apply: s => { s.mod.bounce = 0.95; } },
-        { name: 'NORMAL', apply: s => { s.mod = { gravity: 0.45, ballScale: 1, playerScale: 1, bounce: 0.7 }; } },
+        { name: 'MEGA BALL', apply: s => { s.mod.ballR = BALL_R * 2.2; } },
+        { name: 'TINY BALL', apply: s => { s.mod.ballR = BALL_R * 0.6; } },
+        { name: 'LOW GRAVITY', apply: s => { s.mod.grav = 0.18; } },
+        { name: 'MOON GRAVITY', apply: s => { s.mod.grav = 0.1; } },
+        { name: 'HEAVY GRAVITY', apply: s => { s.mod.grav = 0.7; } },
+        { name: 'GIANT PLAYERS', apply: s => { s.mod.pScale = 1.5; } },
+        { name: 'TINY PLAYERS', apply: s => { s.mod.pScale = 0.55; } },
+        { name: 'ICE FLOOR', apply: s => { s.mod.friction = 0.995; } },
+        { name: 'SUPER BOUNCY', apply: s => { s.mod.bounce = 0.92; } },
+        { name: 'SPEED BOOST', apply: s => { s.mod.jumpPow = 16; } },
+        { name: 'NORMAL', apply: s => { resetMod(s); } },
     ];
 
-    function initGameState() {
+    function resetMod(s) {
+        s.mod = { grav: 0.38, ballR: BALL_R, pScale: 1, bounce: 0.72, friction: 0.92, jumpPow: 12 };
+    }
+
+    function makePlayer(x, dir) {
         return {
-            p: [
-                { x: 180, y: GROUND_Y - PH, vy: 0, jumping: false },
-                { x: CW - 180 - PW, y: GROUND_Y - PH, vy: 0, jumping: false }
-            ],
-            ball: { x: CW / 2, y: 200, vx: (Math.random() - 0.5) * 3, vy: -2 },
-            score: [0, 0],
-            mod: { gravity: 0.45, ballScale: 1, playerScale: 1, bounce: 0.7 },
-            inputs: [false, false],
-            status: 'playing',
-            winner: -1
+            x: x, y: GROUND_Y,
+            vx: 0, vy: 0,
+            dir: dir,           // 1=faces right, -1=faces left
+            bodyAngle: 0,       // torso tilt (radians)
+            bodyAngVel: 0,
+            kickTime: -1,       // -1=idle, 0+=kick phase (frames)
+            legA1: 0, legA2: 0, // leg joint angles
+            armA1: 0, armA2: 0, // arm joint angles
+            grounded: true,
         };
     }
 
-    function resetBall(state) {
-        state.ball.x = CW / 2;
-        state.ball.y = 200;
-        state.ball.vx = (Math.random() - 0.5) * 4;
-        state.ball.vy = -3;
-        state.p[0].x = 180; state.p[0].y = GROUND_Y - PH * state.mod.playerScale; state.p[0].vy = 0; state.p[0].jumping = false;
-        state.p[1].x = CW - 180 - PW * state.mod.playerScale; state.p[1].y = GROUND_Y - PH * state.mod.playerScale; state.p[1].vy = 0; state.p[1].jumping = false;
+    function initGameState() {
+        const s = {
+            p: [ makePlayer(160, 1), makePlayer(CW - 160, -1) ],
+            ball: { x: CW / 2, y: 250, vx: 0, vy: 0, spin: 0 },
+            score: [0, 0],
+            mod: {},
+            inputs: [false, false],
+            status: 'playing', // 'playing', 'goal', 'ended'
+            winner: -1,
+            goalTimer: 0,
+            goalFor: -1,
+            t: 0,
+        };
+        resetMod(s);
+        return s;
     }
 
-    function updateGame(state, dt) {
-        if (state.status !== 'playing') return;
+    function resetRound(s) {
+        s.p[0] = makePlayer(160, 1);
+        s.p[1] = makePlayer(CW - 160, -1);
+        s.ball = { x: CW / 2, y: 220, vx: (Math.random() - 0.5) * 2, vy: -1, spin: 0 };
+        s.inputs = [false, false];
+        s.status = 'playing';
+        s.goalTimer = 0;
+        s.goalFor = -1;
+    }
 
-        const g = state.mod.gravity;
-        const bs = state.mod.ballScale;
-        const ps = state.mod.playerScale;
+    // Get body part positions for a character (for collision + drawing)
+    function getCharParts(p, sc) {
+        const s = sc || 1;
+        const hipX = p.x;
+        const hipY = p.y;
+        const ba = p.bodyAngle;
+        const d = p.dir;
+
+        // Torso goes upward from hip
+        const shoulderX = hipX + Math.sin(ba) * TORSO_LEN * s;
+        const shoulderY = hipY - Math.cos(ba) * TORSO_LEN * s;
+
+        // Head
+        const headX = shoulderX + Math.sin(ba) * (HEAD_R + 3) * s;
+        const headY = shoulderY - Math.cos(ba) * (HEAD_R + 3) * s;
+
+        // Left leg (kicking leg)
+        const la1 = p.legA1;
+        const kneeX = hipX + Math.cos(la1) * UPPER_LEG * s * d;
+        const kneeY = hipY + Math.sin(la1) * UPPER_LEG * s;
+        const la2 = p.legA2;
+        const footX = kneeX + Math.cos(la2) * LOWER_LEG * s * d;
+        const footY = kneeY + Math.sin(la2) * LOWER_LEG * s;
+
+        // Right leg (support leg)
+        const sla1 = Math.PI * 0.45; // hangs mostly down, slight back
+        const skneeX = hipX - Math.cos(sla1) * UPPER_LEG * s * d * 0.3;
+        const skneeY = hipY + Math.sin(sla1) * UPPER_LEG * s;
+        const sfootX = skneeX - Math.cos(sla1) * LOWER_LEG * s * d * 0.1;
+        const sfootY = skneeY + Math.sin(sla1) * LOWER_LEG * s;
+
+        // Arms
+        const aa1 = p.armA1;
+        const elbowX = shoulderX + Math.cos(aa1) * UPPER_ARM * s * d;
+        const elbowY = shoulderY + Math.sin(aa1) * UPPER_ARM * s;
+        const aa2 = p.armA2;
+        const handX = elbowX + Math.cos(aa2) * LOWER_ARM * s * d;
+        const handY = elbowY + Math.sin(aa2) * LOWER_ARM * s;
+
+        return {
+            hipX, hipY, shoulderX, shoulderY, headX, headY, headR: HEAD_R * s,
+            kneeX, kneeY, footX, footY,
+            skneeX, skneeY, sfootX, sfootY,
+            elbowX, elbowY, handX, handY,
+        };
+    }
+
+    // Collision: circle vs line segment, returns push vector or null
+    function circleSegDist(cx, cy, x1, y1, x2, y2) {
+        const dx = x2 - x1, dy = y2 - y1;
+        const len2 = dx * dx + dy * dy;
+        if (len2 === 0) return Math.sqrt((cx - x1) ** 2 + (cy - y1) ** 2);
+        let t = ((cx - x1) * dx + (cy - y1) * dy) / len2;
+        t = Math.max(0, Math.min(1, t));
+        const px = x1 + t * dx, py = y1 + t * dy;
+        return Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
+    }
+
+    function updateGame(state) {
+        if (state.status === 'ended') return;
+
+        // Goal celebration pause
+        if (state.status === 'goal') {
+            state.goalTimer--;
+            if (state.goalTimer <= 0) {
+                // Apply random modifier for next round
+                if (state.score[0] < WIN_SCORE && state.score[1] < WIN_SCORE) {
+                    const mod = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
+                    mod.apply(state);
+                    brModName = mod.name;
+                    brModShowTimer = 90;
+                    resetRound(state);
+                }
+            }
+            state.inputs = [false, false];
+            return;
+        }
+
+        state.t++;
+        const grav = state.mod.grav;
+        const sc = state.mod.pScale;
+        const br = state.mod.ballR;
         const bounce = state.mod.bounce;
-        const br = BALL_R * bs;
-        const pw = PW * ps;
-        const ph = PH * ps;
+        const fric = state.mod.friction;
+        const jumpPow = state.mod.jumpPow;
 
-        // Player physics
+        // ---- PLAYER PHYSICS ----
         for (let i = 0; i < 2; i++) {
             const p = state.p[i];
 
-            // Auto walk toward ball
-            const pcx = p.x + pw / 2;
-            const diff = state.ball.x - pcx;
-            const walkSpeed = 1.5;
-            if (Math.abs(diff) > pw) {
-                p.x += Math.sign(diff) * walkSpeed;
+            // Input: jump + kick
+            if (state.inputs[i] && p.grounded) {
+                p.vy = -(jumpPow + Math.random() * 3);
+                p.vx = p.dir * (3 + Math.random() * 4);
+                p.grounded = false;
+                p.kickTime = 0;
+                p.bodyAngVel = -p.dir * (0.06 + Math.random() * 0.04);
             }
 
-            // Jump input
-            if (state.inputs[i] && !p.jumping) {
-                p.vy = -11 - Math.random() * 2;
-                p.jumping = true;
-                // Kick toward ball when jumping
-                const dx = state.ball.x - pcx;
-                const dy = state.ball.y - (p.y + ph / 2);
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < pw * 2 + br) {
-                    const force = 9 + Math.random() * 3;
-                    const angle = Math.atan2(dy - ph, dx);
-                    state.ball.vx += Math.cos(angle) * force * 0.5;
-                    state.ball.vy += Math.sin(angle) * force * 0.3 - 4;
+            // Kick animation
+            if (p.kickTime >= 0) {
+                p.kickTime++;
+                const kt = p.kickTime;
+
+                // Leg angles during kick (flying kick motion)
+                if (kt < 8) {
+                    // Wind up: legs pull back
+                    p.legA1 = 0.4 + kt * 0.1;
+                    p.legA2 = 0.6 + kt * 0.12;
+                } else if (kt < 20) {
+                    // Kick forward: legs extend
+                    const t = (kt - 8) / 12;
+                    p.legA1 = 0.4 + 0.8 - t * 1.8;
+                    p.legA2 = 0.6 + 0.96 - t * 2.2;
+                } else {
+                    // Hold extended
+                    p.legA1 = -0.6 + Math.sin(kt * 0.15) * 0.2;
+                    p.legA2 = -0.64 + Math.sin(kt * 0.15 + 0.5) * 0.2;
                 }
+
+                // Arm flailing
+                p.armA1 = Math.sin(kt * 0.25) * 1.5 - 0.5;
+                p.armA2 = Math.sin(kt * 0.3 + 1) * 1.2;
             }
 
             // Gravity
-            p.vy += g;
+            p.vy += grav;
+            p.x += p.vx;
             p.y += p.vy;
 
-            // Ground
-            if (p.y >= GROUND_Y - ph) {
-                p.y = GROUND_Y - ph;
+            // Body tilt
+            p.bodyAngle += p.bodyAngVel;
+            if (p.grounded) {
+                // Spring back to upright
+                p.bodyAngle *= 0.85;
+                p.bodyAngVel *= 0.8;
+            }
+
+            // Clamp body angle
+            p.bodyAngle = Math.max(-1.2, Math.min(1.2, p.bodyAngle));
+
+            // Ground collision
+            if (p.y >= GROUND_Y) {
+                p.y = GROUND_Y;
                 p.vy = 0;
-                p.jumping = false;
+                p.vx *= fric;
+                if (!p.grounded) {
+                    // Landing
+                    p.grounded = true;
+                    p.kickTime = -1;
+                    p.bodyAngVel = -p.bodyAngle * 0.3; // bounce back
+                    // Reset limbs to idle
+                    p.legA1 = 0.3 + Math.random() * 0.2;
+                    p.legA2 = 0.4 + Math.random() * 0.2;
+                    p.armA1 = 0.3;
+                    p.armA2 = 0.5;
+                }
+                // Idle sway
+                if (p.kickTime < 0) {
+                    p.legA1 = 0.35 + Math.sin(state.t * 0.04) * 0.05;
+                    p.legA2 = 0.45 + Math.sin(state.t * 0.04 + 0.3) * 0.05;
+                    p.armA1 = 0.4 + Math.sin(state.t * 0.03) * 0.1;
+                    p.armA2 = 0.6 + Math.sin(state.t * 0.035 + 0.5) * 0.1;
+                }
             }
 
-            // Walls
-            p.x = Math.max(5, Math.min(CW - pw - 5, p.x));
-        }
+            // Wall clamp
+            p.x = Math.max(30, Math.min(CW - 30, p.x));
 
-        // Ball physics
-        state.ball.vy += g;
-        state.ball.x += state.ball.vx;
-        state.ball.y += state.ball.vy;
-
-        // Ball-player collision
-        for (let i = 0; i < 2; i++) {
-            const p = state.p[i];
-            const dx = state.ball.x - (p.x + pw / 2);
-            const dy = state.ball.y - (p.y + ph / 3);
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const minDist = br + pw * 0.6;
-            if (dist < minDist && dist > 0) {
-                const nx = dx / dist, ny = dy / dist;
-                const force = 8 + Math.abs(p.vy) * 0.5;
-                state.ball.vx = nx * force + (Math.random() - 0.5) * 2;
-                state.ball.vy = ny * force - 3;
-                // Push ball out
-                state.ball.x = (p.x + pw / 2) + nx * minDist;
-                state.ball.y = (p.y + ph / 3) + ny * minDist;
+            // Slow walk toward ball when grounded
+            if (p.grounded && p.kickTime < 0) {
+                const diff = state.ball.x - p.x;
+                if (Math.abs(diff) > 40) {
+                    p.vx += Math.sign(diff) * 0.15;
+                }
+                p.vx *= 0.9;
             }
         }
+
+        // ---- BALL PHYSICS ----
+        const b = state.ball;
+        b.vy += grav;
+        b.x += b.vx;
+        b.y += b.vy;
+        b.spin += b.vx * 0.04;
 
         // Ball-ground
-        if (state.ball.y + br >= GROUND_Y) {
-            state.ball.y = GROUND_Y - br;
-            state.ball.vy *= -bounce;
-            state.ball.vx *= 0.92;
+        if (b.y + br >= GROUND_Y) {
+            b.y = GROUND_Y - br;
+            b.vy *= -bounce;
+            b.vx *= 0.94;
+            if (Math.abs(b.vy) < 1) b.vy = 0;
         }
-
         // Ball-ceiling
-        if (state.ball.y - br <= 0) {
-            state.ball.y = br;
-            state.ball.vy *= -bounce;
-        }
-
+        if (b.y - br <= 0) { b.y = br; b.vy *= -bounce; }
         // Ball-walls
-        if (state.ball.x - br <= 0) { state.ball.x = br; state.ball.vx *= -bounce; }
-        if (state.ball.x + br >= CW) { state.ball.x = CW - br; state.ball.vx *= -bounce; }
+        if (b.x - br <= 0) { b.x = br; b.vx *= -0.6; }
+        if (b.x + br >= CW) { b.x = CW - br; b.vx *= -0.6; }
 
-        // Damping
-        state.ball.vx *= 0.998;
+        // Air drag
+        b.vx *= 0.999;
 
-        // Scoring - LEFT hoop (ball going down through the hoop scores for RIGHT player)
-        if (state.ball.x > HOOP_LEFT_X - 18 && state.ball.x < HOOP_LEFT_X + 18 &&
-            state.ball.y > HOOP_Y && state.ball.y < HOOP_Y + 35 && state.ball.vy > 1) {
-            state.score[1]++;
-            brScoreFlash = 30;
-            if (state.score[1] >= WIN_SCORE) { state.status = 'ended'; state.winner = 1; }
-            else resetBall(state);
+        // ---- BALL vs PLAYER COLLISION ----
+        for (let i = 0; i < 2; i++) {
+            const p = state.p[i];
+            const parts = getCharParts(p, sc);
+
+            // Collider points: head, shoulder, hip, knee, foot, hand
+            const colliders = [
+                { x: parts.headX, y: parts.headY, r: parts.headR + 2, pow: 1.0 },
+                { x: parts.shoulderX, y: parts.shoulderY, r: 8 * sc, pow: 0.8 },
+                { x: parts.hipX, y: parts.hipY, r: 8 * sc, pow: 0.7 },
+                { x: parts.kneeX, y: parts.kneeY, r: 7 * sc, pow: 1.2 },
+                { x: parts.footX, y: parts.footY, r: 8 * sc, pow: 2.0 },
+                { x: parts.handX, y: parts.handY, r: 6 * sc, pow: 1.0 },
+                { x: parts.sfootX, y: parts.sfootY, r: 7 * sc, pow: 1.0 },
+            ];
+
+            for (const c of colliders) {
+                const dx = b.x - c.x;
+                const dy = b.y - c.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const minD = br + c.r;
+                if (dist < minD && dist > 0.1) {
+                    const nx = dx / dist, ny = dy / dist;
+                    // Push ball out
+                    b.x = c.x + nx * minD;
+                    b.y = c.y + ny * minD;
+
+                    // Hit force depends on body part power and velocity
+                    const vel = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+                    const hitForce = (5 + vel * 0.6) * c.pow;
+                    const kickBonus = (p.kickTime >= 8 && p.kickTime <= 25) ? 1.6 : 1.0;
+                    b.vx = nx * hitForce * kickBonus + p.vx * 0.4 + (Math.random() - 0.5) * 2;
+                    b.vy = ny * hitForce * kickBonus + p.vy * 0.3 - 2;
+
+                    // Push player back
+                    p.vx -= nx * 2;
+                    p.vy -= ny * 1;
+                    break; // only one collision per player per frame
+                }
+            }
         }
-        // RIGHT hoop
-        if (state.ball.x > HOOP_RIGHT_X - 18 && state.ball.x < HOOP_RIGHT_X + 18 &&
-            state.ball.y > HOOP_Y && state.ball.y < HOOP_Y + 35 && state.ball.vy > 1) {
-            state.score[0]++;
-            brScoreFlash = 30;
-            if (state.score[0] >= WIN_SCORE) { state.status = 'ended'; state.winner = 0; }
-            else resetBall(state);
+
+        // ---- BALL vs BACKBOARD / RIM ----
+        // Left backboard (x=45, y from RIM_Y-40 to RIM_Y+30)
+        if (b.x - br < 48 && b.y > RIM_Y - 40 && b.y < RIM_Y + 30 && b.vx < 0) {
+            b.x = 48 + br; b.vx *= -0.5;
+        }
+        // Right backboard
+        if (b.x + br > CW - 48 && b.y > RIM_Y - 40 && b.y < RIM_Y + 30 && b.vx > 0) {
+            b.x = CW - 48 - br; b.vx *= -0.5;
+        }
+        // Left rim edges (two small circles at rim endpoints)
+        rimBounce(b, br, bounce, RIM_LEFT_X - RIM_W / 2, RIM_Y);
+        rimBounce(b, br, bounce, RIM_LEFT_X + RIM_W / 2, RIM_Y);
+        // Right rim edges
+        rimBounce(b, br, bounce, RIM_RIGHT_X - RIM_W / 2, RIM_Y);
+        rimBounce(b, br, bounce, RIM_RIGHT_X + RIM_W / 2, RIM_Y);
+
+        // ---- SCORING ----
+        // Left hoop: ball center passes through rim opening going downward
+        if (b.x > RIM_LEFT_X - RIM_W / 2 + 2 && b.x < RIM_LEFT_X + RIM_W / 2 - 2 &&
+            b.y > RIM_Y && b.y < RIM_Y + 20 && b.vy > 0.5) {
+            // Right player scores (scoring in opponent's hoop)
+            scoreGoal(state, 1);
+        }
+        // Right hoop
+        if (b.x > RIM_RIGHT_X - RIM_W / 2 + 2 && b.x < RIM_RIGHT_X + RIM_W / 2 - 2 &&
+            b.y > RIM_Y && b.y < RIM_Y + 20 && b.vy > 0.5) {
+            scoreGoal(state, 0);
         }
 
-        // Clear inputs after processing
+        // Clear inputs
         state.inputs = [false, false];
     }
 
-    function renderGame(ctx, state) {
-        const bs = state.mod.ballScale;
-        const ps = state.mod.playerScale;
-        const br = BALL_R * bs;
-        const pw = PW * ps;
-        const ph = PH * ps;
-
-        // Background
-        ctx.fillStyle = '#1a0e00';
-        ctx.fillRect(0, 0, CW, CH);
-
-        // Court floor
-        ctx.fillStyle = '#2a1800';
-        ctx.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
-        ctx.strokeStyle = '#3a2200';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(CW, GROUND_Y); ctx.stroke();
-
-        // Center line
-        ctx.strokeStyle = '#2a1800';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
-        ctx.beginPath(); ctx.moveTo(CW / 2, 0); ctx.lineTo(CW / 2, GROUND_Y); ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Hoops
-        drawHoop(ctx, HOOP_LEFT_X, HOOP_Y, '#00d4ff');
-        drawHoop(ctx, HOOP_RIGHT_X, HOOP_Y, '#ff8800');
-
-        // Players
-        drawPlayer(ctx, state.p[0], pw, ph, '#00d4ff', '#006688');
-        drawPlayer(ctx, state.p[1], pw, ph, '#ff8800', '#884400');
-
-        // Ball
-        drawBall(ctx, state.ball.x, state.ball.y, br);
-
-        // Score flash
-        if (brScoreFlash > 0) {
-            ctx.fillStyle = `rgba(255,255,255,${brScoreFlash / 60})`;
-            ctx.fillRect(0, 0, CW, CH);
-            brScoreFlash--;
+    function rimBounce(b, br, bounce, rx, ry) {
+        const rimR = 4;
+        const dx = b.x - rx, dy = b.y - ry;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minD = br + rimR;
+        if (dist < minD && dist > 0.1) {
+            const nx = dx / dist, ny = dy / dist;
+            b.x = rx + nx * minD;
+            b.y = ry + ny * minD;
+            // Reflect velocity
+            const dot = b.vx * nx + b.vy * ny;
+            b.vx -= 2 * dot * nx * bounce;
+            b.vy -= 2 * dot * ny * bounce;
+            b.vx += (Math.random() - 0.5) * 1.5; // rattling randomness
         }
     }
 
-    function drawHoop(ctx, x, y, color) {
-        // Backboard
-        ctx.fillStyle = '#333';
-        const bx = x < CW / 2 ? x - 25 : x + 5;
-        ctx.fillRect(bx, y - 20, 20, 60);
+    function scoreGoal(state, forPlayer) {
+        state.score[forPlayer]++;
+        state.goalFor = forPlayer;
+        state.status = 'goal';
+        state.goalTimer = 80; // ~1.3 seconds celebration
+        brScoreFlash = 25;
+        brShake = 12;
+        if (state.score[forPlayer] >= WIN_SCORE) {
+            state.status = 'ended';
+            state.winner = forPlayer;
+        }
+    }
 
-        // Rim
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
+    // ---- RENDERING ----
+    function renderGame(ctx, state) {
+        const sc = state.mod.pScale;
+        const br = state.mod.ballR;
+
+        // Screen shake
+        ctx.save();
+        if (brShake > 0) {
+            ctx.translate(
+                (Math.random() - 0.5) * brShake * 1.5,
+                (Math.random() - 0.5) * brShake * 1.5
+            );
+            brShake *= 0.88;
+            if (brShake < 0.5) brShake = 0;
+        }
+
+        // Sky / background
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, CW, CH);
+
+        // Court floor (wood)
+        const floorGrad = ctx.createLinearGradient(0, GROUND_Y, 0, CH);
+        floorGrad.addColorStop(0, '#8B5E3C');
+        floorGrad.addColorStop(1, '#6B3F1F');
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
+
+        // Floor lines
+        ctx.strokeStyle = '#9B6E4C';
+        ctx.lineWidth = 1;
+        for (let lx = 0; lx < CW; lx += 60) {
+            ctx.beginPath(); ctx.moveTo(lx, GROUND_Y); ctx.lineTo(lx, CH); ctx.stroke();
+        }
+        ctx.strokeStyle = '#A0784F';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(CW, GROUND_Y); ctx.stroke();
+
+        // Center line
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath(); ctx.moveTo(CW / 2, GROUND_Y - 5); ctx.lineTo(CW / 2, GROUND_Y + 50); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Center circle
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(CW / 2, GROUND_Y, 50, Math.PI, 0); ctx.stroke();
+
+        // Draw hoops (behind players)
+        drawHoop(ctx, RIM_LEFT_X, RIM_Y, true);
+        drawHoop(ctx, RIM_RIGHT_X, RIM_Y, false);
+
+        // Draw players
+        drawChar(ctx, state.p[0], sc, '#00BFFF', '#0088BB', '#FFD93D');
+        drawChar(ctx, state.p[1], sc, '#FF6B2B', '#CC4400', '#FFD93D');
+
+        // Draw ball
+        drawBall(ctx, state.ball, br);
+
+        // Score flash overlay
+        if (brScoreFlash > 0) {
+            ctx.fillStyle = `rgba(255,255,255,${brScoreFlash / 50})`;
+            ctx.fillRect(0, 0, CW, CH);
+            brScoreFlash--;
+        }
+
+        // Goal text
+        if (state.status === 'goal') {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 36px "Press Start 2P", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = state.goalFor === 0 ? '#00BFFF' : '#FF6B2B';
+            ctx.shadowBlur = 30;
+            ctx.fillText('SCORE!', CW / 2, CH / 2 - 20);
+            ctx.shadowBlur = 0;
+        }
+
+        // In-canvas score
+        ctx.font = 'bold 22px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#00BFFF';
+        ctx.fillText(state.score[0], CW / 2 - 50, 15);
+        ctx.fillStyle = '#444';
+        ctx.fillText(':', CW / 2, 15);
+        ctx.fillStyle = '#FF6B2B';
+        ctx.fillText(state.score[1], CW / 2 + 50, 15);
+
+        ctx.restore();
+    }
+
+    function drawHoop(ctx, rx, ry, isLeft) {
+        const dir = isLeft ? -1 : 1;
+        const bbX = isLeft ? 40 : CW - 40;
+
+        // Pole
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 5;
         ctx.beginPath();
-        ctx.moveTo(x - 16, y);
-        ctx.lineTo(x + 16, y);
+        ctx.moveTo(bbX, GROUND_Y);
+        ctx.lineTo(bbX, ry - 42);
         ctx.stroke();
 
-        // Net lines
-        ctx.strokeStyle = `${color}44`;
+        // Backboard
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(bbX - 3, ry - 42, 6, BACKBOARD_H);
+        ctx.strokeStyle = '#888';
         ctx.lineWidth = 1;
-        for (let i = -12; i <= 12; i += 8) {
+        ctx.strokeRect(bbX - 3, ry - 42, 6, BACKBOARD_H);
+
+        // Backboard inner rectangle (target square)
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bbX + dir * 2 - 1, ry - 14, 3, 24);
+
+        // Rim bracket
+        ctx.fillStyle = '#ff4411';
+        ctx.fillRect(bbX + dir * 2, ry - 3, dir * (RIM_W / 2 + 8), 5);
+
+        // Rim (the scoring opening)
+        ctx.strokeStyle = '#ff4411';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(rx - RIM_W / 2, ry);
+        ctx.lineTo(rx + RIM_W / 2, ry);
+        ctx.stroke();
+
+        // Rim endpoints (small circles for visual)
+        ctx.fillStyle = '#ff4411';
+        ctx.beginPath(); ctx.arc(rx - RIM_W / 2, ry, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rx + RIM_W / 2, ry, 3, 0, Math.PI * 2); ctx.fill();
+
+        // Net
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1.2;
+        const netH = 28;
+        const netSegs = 5;
+        for (let i = 0; i <= netSegs; i++) {
+            const t = i / netSegs;
+            const topX = rx - RIM_W / 2 + t * RIM_W;
+            const bottomX = rx - RIM_W / 4 + t * RIM_W / 2;
             ctx.beginPath();
-            ctx.moveTo(x + i, y);
-            ctx.lineTo(x + i * 0.6, y + 30);
+            ctx.moveTo(topX, ry + 2);
+            // Slight curve
+            ctx.quadraticCurveTo(
+                (topX + bottomX) / 2 + Math.sin(t * 3 + brFrameCount * 0.02) * 3,
+                ry + netH * 0.6,
+                bottomX, ry + netH
+            );
+            ctx.stroke();
+        }
+        // Horizontal net lines
+        for (let j = 1; j <= 3; j++) {
+            const ny = ry + 2 + (netH * j) / 4;
+            const shrink = j * 2;
+            ctx.beginPath();
+            ctx.moveTo(rx - RIM_W / 2 + shrink, ny);
+            ctx.lineTo(rx + RIM_W / 2 - shrink, ny);
             ctx.stroke();
         }
     }
 
-    function drawPlayer(ctx, p, pw, ph, color, darkColor) {
-        // Body
-        ctx.fillStyle = darkColor;
-        ctx.fillRect(p.x + 4, p.y + ph * 0.3, pw - 8, ph * 0.5);
+    function drawChar(ctx, p, sc, color, darkColor, skinColor) {
+        const parts = getCharParts(p, sc);
 
-        // Jersey
-        ctx.fillStyle = color;
-        ctx.fillRect(p.x + 6, p.y + ph * 0.3, pw - 12, ph * 0.35);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Support leg
+        ctx.strokeStyle = darkColor;
+        ctx.lineWidth = LIMB_W * sc;
+        ctx.beginPath();
+        ctx.moveTo(parts.hipX, parts.hipY);
+        ctx.lineTo(parts.skneeX, parts.skneeY);
+        ctx.lineTo(parts.sfootX, parts.sfootY);
+        ctx.stroke();
+        // Shoe
+        ctx.fillStyle = '#333';
+        ctx.beginPath(); ctx.arc(parts.sfootX, parts.sfootY, 4 * sc, 0, Math.PI * 2); ctx.fill();
+
+        // Kicking leg
+        ctx.strokeStyle = color;
+        ctx.lineWidth = (LIMB_W + 1) * sc;
+        ctx.beginPath();
+        ctx.moveTo(parts.hipX, parts.hipY);
+        ctx.lineTo(parts.kneeX, parts.kneeY);
+        ctx.lineTo(parts.footX, parts.footY);
+        ctx.stroke();
+        // Shoe
+        ctx.fillStyle = '#222';
+        ctx.beginPath(); ctx.arc(parts.footX, parts.footY, 5 * sc, 0, Math.PI * 2); ctx.fill();
+
+        // Torso
+        ctx.strokeStyle = color;
+        ctx.lineWidth = (LIMB_W + 3) * sc;
+        ctx.beginPath();
+        ctx.moveTo(parts.hipX, parts.hipY);
+        ctx.lineTo(parts.shoulderX, parts.shoulderY);
+        ctx.stroke();
+
+        // Jersey stripe
+        const mx = (parts.hipX + parts.shoulderX) / 2;
+        const my = (parts.hipY + parts.shoulderY) / 2;
+        ctx.strokeStyle = darkColor;
+        ctx.lineWidth = 3 * sc;
+        ctx.beginPath();
+        ctx.moveTo(mx - 4 * sc * p.dir, my);
+        ctx.lineTo(mx + 4 * sc * p.dir, my);
+        ctx.stroke();
+
+        // Arm
+        ctx.strokeStyle = skinColor;
+        ctx.lineWidth = (LIMB_W - 1) * sc;
+        ctx.beginPath();
+        ctx.moveTo(parts.shoulderX, parts.shoulderY);
+        ctx.lineTo(parts.elbowX, parts.elbowY);
+        ctx.lineTo(parts.handX, parts.handY);
+        ctx.stroke();
+        // Hand
+        ctx.fillStyle = skinColor;
+        ctx.beginPath(); ctx.arc(parts.handX, parts.handY, 3 * sc, 0, Math.PI * 2); ctx.fill();
 
         // Head
-        ctx.fillStyle = '#dda';
+        ctx.fillStyle = skinColor;
         ctx.beginPath();
-        ctx.arc(p.x + pw / 2, p.y + ph * 0.18, pw * 0.3, 0, Math.PI * 2);
+        ctx.arc(parts.headX, parts.headY, parts.headR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#CC9900';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Eyes (always facing direction)
+        const eyeOff = p.dir * 3 * sc;
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.arc(parts.headX + eyeOff, parts.headY - 2 * sc, 2 * sc, 0, Math.PI * 2);
+        ctx.fill();
+        // Eye white dot
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(parts.headX + eyeOff + 0.5 * sc, parts.headY - 2.5 * sc, 0.8 * sc, 0, Math.PI * 2);
         ctx.fill();
 
-        // Legs
-        ctx.fillStyle = darkColor;
-        const legW = (pw - 12) / 2;
-        let legOffset = 0;
-        if (p.jumping) legOffset = Math.sin(Date.now() * 0.01) * 4;
-        ctx.fillRect(p.x + 6, p.y + ph * 0.8, legW, ph * 0.2 + legOffset);
-        ctx.fillRect(p.x + pw - 6 - legW, p.y + ph * 0.8, legW, ph * 0.2 - legOffset);
+        // Headband
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3 * sc;
+        const hbAngle = p.bodyAngle;
+        ctx.beginPath();
+        ctx.arc(parts.headX, parts.headY, parts.headR + 1, -Math.PI * 0.3 + hbAngle, Math.PI * 0.3 + hbAngle);
+        ctx.stroke();
     }
 
-    function drawBall(ctx, x, y, r) {
-        ctx.fillStyle = '#e87020';
+    function drawBall(ctx, ball, br) {
+        ctx.save();
+        ctx.translate(ball.x, ball.y);
+        ctx.rotate(ball.spin);
+
+        // Ball shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
         ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.ellipse(2, 2, br, br * 0.9, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Lines
-        ctx.strokeStyle = '#c05010';
+        // Ball body
+        const grad = ctx.createRadialGradient(-br * 0.3, -br * 0.3, br * 0.1, 0, 0, br);
+        grad.addColorStop(0, '#FF8C00');
+        grad.addColorStop(0.7, '#E06000');
+        grad.addColorStop(1, '#B84000');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, br, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ball outline
+        ctx.strokeStyle = '#8B3000';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.arc(0, 0, br, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Seam lines
+        ctx.strokeStyle = '#8B300066';
+        ctx.lineWidth = 1;
+        // Vertical
+        ctx.beginPath();
+        ctx.ellipse(0, 0, br * 0.15, br, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // Horizontal
+        ctx.beginPath();
+        ctx.moveTo(-br * 0.7, 0);
+        ctx.quadraticCurveTo(0, -br * 0.3, br * 0.7, 0);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(x, y - r);
-        ctx.lineTo(x, y + r);
+        ctx.moveTo(-br * 0.7, 0);
+        ctx.quadraticCurveTo(0, br * 0.3, br * 0.7, 0);
         ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x - r, y);
-        ctx.lineTo(x + r, y);
-        ctx.stroke();
+
+        ctx.restore();
     }
 
     // Side selection
@@ -1568,9 +1988,16 @@
                 brStartGameplay(data);
             }
 
-            // Sync game state (client only)
-            if (data.status === 'playing' && currentScreen === 'brOnlineGame' && !brOnlineIsHost && data.gameState) {
-                gs = JSON.parse(JSON.stringify(data.gameState));
+            // Sync game state (client only) - handle playing and goal states
+            if ((data.status === 'playing') && currentScreen === 'brOnlineGame' && !brOnlineIsHost && data.gameState) {
+                const newGs = JSON.parse(JSON.stringify(data.gameState));
+                // Detect score changes for flash/shake effects
+                if (gs && newGs.score && gs.score &&
+                    (newGs.score[0] !== gs.score[0] || newGs.score[1] !== gs.score[1])) {
+                    brScoreFlash = 25;
+                    brShake = 12;
+                }
+                gs = newGs;
                 updateBrScoreUI();
                 if (gs.status === 'ended') {
                     brShowEndScreen();
@@ -1632,29 +2059,19 @@
     function brStartGameLoop() {
         const canvas = document.getElementById('brCanvas');
         const ctx = canvas.getContext('2d');
-        let lastTime = performance.now();
 
         brStopGameLoop();
         brGameActive = true;
+        brFrameCount = 0;
 
         function loop() {
             if (!brGameActive) return;
+            brFrameCount++;
             const now = performance.now();
-            const dt = (now - lastTime) / 16.67;
-            lastTime = now;
 
-            // Modifier timer
-            brModTimer++;
-            if (brModTimer >= 900) { // ~15 seconds at 60fps
-                brModTimer = 0;
-                const mod = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
-                mod.apply(gs);
-                brModName = mod.name;
-                brModShowTimer = 120;
-            }
             if (brModShowTimer > 0) brModShowTimer--;
 
-            updateGame(gs, dt);
+            updateGame(gs);
             renderGame(ctx, gs);
 
             // Show modifier name
@@ -1698,6 +2115,7 @@
 
         function loop() {
             if (!brGameActive) return;
+            brFrameCount++;
             if (gs) {
                 renderGame(ctx, gs);
             }
