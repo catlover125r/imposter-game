@@ -1157,23 +1157,39 @@
     // =============================================
     const BR_GAME_URL = 'https://2048taylorswift.github.io/basketrandom/';
 
-    function buildGameHTML() {
+    async function buildGameHTML() {
         const SE = '<' + '/script>';
         const BASE = BR_GAME_URL;
         const ORIGIN = 'https://2048taylorswift.github.io';
+
+        // Fetch main.js and patch location.origin / self.location references
+        // so the Construct 3 runtime can resolve URLs correctly in srcdoc
+        let mainJs = '';
+        try {
+            const resp = await fetch(BASE + 'scripts/main.js');
+            mainJs = await resp.text();
+            // Replace all location.origin with the actual origin string
+            mainJs = mainJs.replace(/location\.origin/g, '("' + ORIGIN + '")');
+            // Replace self.location.href references
+            mainJs = mainJs.replace(/self\.location\.href/g, '("' + BASE + 'index.html")');
+            // Escape closing script tags inside the inlined code
+            mainJs = mainJs.replace(/<\/script>/gi, '<\\/script>');
+        } catch(e) {
+            console.error('Failed to fetch main.js:', e);
+        }
+
         return '<!DOCTYPE html><html><head>' +
             '<meta charset="UTF-8">' +
             '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no">' +
             '<base href="' + BASE + '">' +
             '<link rel="stylesheet" href="style.css">' +
             '<script>' +
-            // Fix URL resolution for srcdoc context
             '(function(){' +
             'var B="' + BASE + '",O="' + ORIGIN + '";' +
+            // Fix URL resolution for fetch/XHR
             'function fix(u){' +
             'if(typeof u!=="string")return u;' +
             'if(u.startsWith("http")||u.startsWith("blob:")||u.startsWith("data:"))return u;' +
-            'if(u.startsWith("about:"))u=u.substring(6);' +
             'if(u.startsWith("/"))return O+u;' +
             'try{return new URL(u,B).href}catch(e){return u}' +
             '}' +
@@ -1185,6 +1201,15 @@
             'var oX=XMLHttpRequest.prototype.open;' +
             'XMLHttpRequest.prototype.open=function(m,u){' +
             'arguments[1]=fix(u);return oX.apply(this,arguments)};' +
+            // Override Worker constructor: create blob workers that importScripts from game URL
+            'var _W=window.Worker;' +
+            'window.Worker=function(u,opts){' +
+            'var absU;try{absU=new URL(u,B).href}catch(e){absU=u}' +
+            'var pfx="var _f=self.fetch;self.fetch=function(r,i){if(typeof r===\\"string\\"&&!r.startsWith(\\"http\\")&&!r.startsWith(\\"blob:\\")&&!r.startsWith(\\"data:\\"))try{r=new URL(r,\\""+B+"\\").href}catch(e){}return _f.call(this,r,i)};";' +
+            'var code=pfx+"importScripts(\\""+absU+"\\");";' +
+            'var blob=new Blob([code],{type:"application/javascript"});' +
+            'return new _W(URL.createObjectURL(blob),opts)};' +
+            'window.Worker.prototype=_W.prototype;' +
             // Prevent arrow/space defaults
             'window.addEventListener("keydown",function(e){' +
             'if([32,37,38,39,40].indexOf(e.keyCode)>-1)e.preventDefault()},false);' +
@@ -1214,7 +1239,8 @@
             '<script src="box2d.wasm.js">' + SE +
             '<script src="scripts/supportcheck.js">' + SE +
             '<script src="scripts/offlineclient.js">' + SE +
-            '<script src="scripts/main.js">' + SE +
+            // Inline the patched main.js instead of loading via src
+            '<script>' + mainJs + SE +
             '</body></html>';
     }
 
@@ -1358,7 +1384,7 @@
     }
 
     // Both players load the game and set up input sync
-    function brStartGameplay() {
+    async function brStartGameplay() {
         showScreen('brOnlineGame');
 
         const mySide = brOnlineSide;
@@ -1367,11 +1393,15 @@
         // Load the actual Basket Random game in iframe (same for both players)
         const iframe = document.getElementById('brGameIframe');
         brGameIframe = iframe;
-        iframe.srcdoc = buildGameHTML();
 
         const statusEl = document.getElementById('brOnlineStatus');
-        statusEl.textContent = 'Loading game...';
+        statusEl.textContent = 'Downloading game files...';
         statusEl.style.color = '#ff8800';
+
+        const gameHTML = await buildGameHTML();
+        iframe.srcdoc = gameHTML;
+
+        statusEl.textContent = 'Loading game...';
 
         document.getElementById('brOnlineTip').textContent =
             'You play ' + mySide.toUpperCase() + ' (' +
