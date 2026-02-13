@@ -1635,6 +1635,7 @@
         let lastTime = performance.now();
 
         brStopGameLoop();
+        brGameActive = true;
 
         function loop() {
             if (!brGameActive) return;
@@ -1693,6 +1694,7 @@
         const ctx = canvas.getContext('2d');
 
         brStopGameLoop();
+        brGameActive = true;
 
         function loop() {
             if (!brGameActive) return;
