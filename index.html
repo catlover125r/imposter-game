@@ -447,6 +447,15 @@
         }
         .iframe-wrap iframe { width: 100%; height: 100%; border: none; }
 
+        #brGameVideo {
+            width: 100%;
+            max-width: 900px;
+            border: 2px solid #ff8800;
+            border-radius: 4px;
+            background: #000;
+            display: none;
+        }
+
         /* Control hints */
         .control-hints {
             display: flex;
@@ -781,31 +790,17 @@
 
         <!-- BRASKET: Online game -->
         <div class="screen" id="brOnlineGame">
-            <div class="score-display">
-                <span class="score-left" id="brScoreLeft">0</span>
-                <span class="score-sep">:</span>
-                <span class="score-right" id="brScoreRight">0</span>
+            <div class="iframe-wrap" id="brOnlineIframeWrap" style="display:none;">
+                <iframe id="brGameIframe" allowfullscreen></iframe>
             </div>
-            <div class="game-canvas-wrap" id="brCanvasWrap">
-                <canvas id="brCanvas" width="800" height="500"></canvas>
-                <div class="modifier-announce" id="brModAnnounce"></div>
+            <video id="brGameVideo" autoplay playsinline></video>
+            <p class="status waiting" id="brOnlineConnStatus">Setting up connection...</p>
+            <div class="control-hints" id="brOnlineHints">
+                <span class="control-hint">Left player: <kbd>W</kbd></span>
+                <span class="control-hint">Right player: <kbd>UP</kbd></span>
             </div>
-            <p style="color:#444; font-size:0.7rem; margin-top:6px;">Press <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.4rem;">SPACE</kbd> or <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.4rem;">W</kbd> or <kbd style="background:#1a1a1a; border:1px solid #333; padding:1px 6px; border-radius:2px; color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.4rem;">UP</kbd> to jump</p>
+            <p style="color:#888; font-size:0.65rem; margin-top:4px;" id="brOnlineTip"></p>
             <button class="btn btn-pink btn-small" onclick="brLeaveOnlineGame()" style="margin-top:8px;">LEAVE</button>
-        </div>
-
-        <!-- BRASKET: Online game over -->
-        <div class="screen" id="brOnlineEnd">
-            <h2 style="color:#ff8800; font-size:0.8rem;">GAME OVER</h2>
-            <div class="score-display">
-                <span class="score-left" id="brEndScoreLeft">0</span>
-                <span class="score-sep">:</span>
-                <span class="score-right" id="brEndScoreRight">0</span>
-            </div>
-            <p id="brEndMessage" style="color:#ff8800; font-family:'Press Start 2P',monospace; font-size:0.7rem; margin:16px 0;"></p>
-            <button class="btn btn-green" style="border-color:#ff8800; color:#ff8800;" id="brPlayAgainBtn" onclick="brPlayAgain()" style="display:none;">PLAY AGAIN</button>
-            <button class="btn btn-pink btn-small" onclick="brLeaveRoom()">LEAVE</button>
-            <p class="status waiting" id="brEndStatus" style="display:none;">Waiting for host...</p>
         </div>
     </div>
 
@@ -1156,7 +1151,7 @@
     }
 
     // ============================================================
-    // BRASKET HANDOM: ONLINE (Canvas game + Firebase)
+    // BRASKET HANDOM: ONLINE (WebRTC + Real Game)
     // ============================================================
     let brOnlineSide = 'left';
     let brOnlinePlayerId = null;
@@ -1164,715 +1159,67 @@
     let brOnlineRoomCode = null;
     let brOnlineIsHost = false;
     let brOnlineRoomRef = null;
-    let brGameLoop = null;
-    let brGameActive = false;
+    let brPeerConn = null;
+    let brDataChannel = null;
+    let brGameIframe = null;
 
     // =============================================
-    // BRASKET HANDOM - GAME ENGINE (Basket Random style)
+    // BRASKET HANDOM - WebRTC + Real Game Engine
     // =============================================
-    const CW = 800, CH = 500;
-    const GROUND_Y = CH - 45;
-    const WIN_SCORE = 5;
+    const BR_CDN = 'https://cdn.jsdelivr.net/gh/bubbls/ruffle@1520d90d7b2994737acd8f7a633d018f63c22ca7/';
 
-    // Character dimensions (base)
-    const CHAR_H = 70;       // total height
-    const HEAD_R = 11;
-    const TORSO_LEN = 22;
-    const UPPER_LEG = 18;
-    const LOWER_LEG = 16;
-    const UPPER_ARM = 14;
-    const LOWER_ARM = 12;
-    const LIMB_W = 5;
-
-    // Hoop positions
-    const RIM_Y = 155;
-    const RIM_LEFT_X = 78;
-    const RIM_RIGHT_X = CW - 78;
-    const RIM_W = 36; // rim opening width
-    const BACKBOARD_H = 80;
-
-    // Ball
-    const BALL_R = 13;
-
-    // Game state
-    let gs = null;
-    let brKeys = {};
-    let brModTimer = 0;
-    let brModName = '';
-    let brModShowTimer = 0;
-    let brScoreFlash = 0;
-    let brGoalPause = 0;
-    let brShake = 0;
-    let brLastSyncTime = 0;
-    let brFrameCount = 0;
-
-    const MODIFIERS = [
-        { name: 'MEGA BALL', apply: s => { s.mod.ballR = BALL_R * 2.2; } },
-        { name: 'TINY BALL', apply: s => { s.mod.ballR = BALL_R * 0.6; } },
-        { name: 'LOW GRAVITY', apply: s => { s.mod.grav = 0.18; } },
-        { name: 'MOON GRAVITY', apply: s => { s.mod.grav = 0.1; } },
-        { name: 'HEAVY GRAVITY', apply: s => { s.mod.grav = 0.7; } },
-        { name: 'GIANT PLAYERS', apply: s => { s.mod.pScale = 1.5; } },
-        { name: 'TINY PLAYERS', apply: s => { s.mod.pScale = 0.55; } },
-        { name: 'ICE FLOOR', apply: s => { s.mod.friction = 0.995; } },
-        { name: 'SUPER BOUNCY', apply: s => { s.mod.bounce = 0.92; } },
-        { name: 'SPEED BOOST', apply: s => { s.mod.jumpPow = 16; } },
-        { name: 'NORMAL', apply: s => { resetMod(s); } },
-    ];
-
-    function resetMod(s) {
-        s.mod = { grav: 0.38, ballR: BALL_R, pScale: 1, bounce: 0.72, friction: 0.92, jumpPow: 12 };
+    function buildGameHTML() {
+        const SE = '<' + '/script>';
+        return '<!DOCTYPE html><html><head>' +
+            '<meta charset="UTF-8">' +
+            '<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">' +
+            '<base href="' + BR_CDN + '">' +
+            '<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000}' +
+            'canvas{display:block;width:100%;height:100%;object-fit:contain}</style>' +
+            '</head><body>' +
+            '<div id="loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-family:sans-serif;text-align:center;">' +
+            '<p style="font-size:1.2em;">Loading game...</p></div>' +
+            '<script src="box2d.js">' + SE +
+            '<script src="main.js">' + SE +
+            '<script>' +
+            'window.addEventListener("message",function(e){' +
+            'if(e.data&&(e.data.type==="keydown"||e.data.type==="keyup")){' +
+            'document.dispatchEvent(new KeyboardEvent(e.data.type,{' +
+            'key:e.data.key,code:e.data.code,' +
+            'keyCode:e.data.keyCode,which:e.data.keyCode,' +
+            'bubbles:true,cancelable:true' +
+            '}));}});' + SE +
+            '</body></html>';
     }
 
-    function makePlayer(x, dir) {
-        return {
-            x: x, y: GROUND_Y,
-            vx: 0, vy: 0,
-            dir: dir,           // 1=faces right, -1=faces left
-            bodyAngle: 0,       // torso tilt (radians)
-            bodyAngVel: 0,
-            kickTime: -1,       // -1=idle, 0+=kick phase (frames)
-            legA1: 0, legA2: 0, // leg joint angles
-            armA1: 0, armA2: 0, // arm joint angles
-            grounded: true,
-        };
+    const RTC_CONFIG = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+    };
+
+    // Wait for canvas element in iframe
+    function waitForCanvas(iframe) {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const check = () => {
+                attempts++;
+                try {
+                    const canvas = iframe.contentDocument.querySelector('canvas');
+                    if (canvas) {
+                        setTimeout(() => resolve(canvas), 500);
+                        return;
+                    }
+                } catch(e) {}
+                if (attempts > 150) { reject(new Error('Timeout waiting for game canvas')); return; }
+                setTimeout(check, 200);
+            };
+            check();
+        });
     }
 
-    function initGameState() {
-        const s = {
-            p: [ makePlayer(160, 1), makePlayer(CW - 160, -1) ],
-            ball: { x: CW / 2, y: 250, vx: 0, vy: 0, spin: 0 },
-            score: [0, 0],
-            mod: {},
-            inputs: [false, false],
-            status: 'playing', // 'playing', 'goal', 'ended'
-            winner: -1,
-            goalTimer: 0,
-            goalFor: -1,
-            t: 0,
-        };
-        resetMod(s);
-        return s;
-    }
 
-    function resetRound(s) {
-        s.p[0] = makePlayer(160, 1);
-        s.p[1] = makePlayer(CW - 160, -1);
-        s.ball = { x: CW / 2, y: 220, vx: (Math.random() - 0.5) * 2, vy: -1, spin: 0 };
-        s.inputs = [false, false];
-        s.status = 'playing';
-        s.goalTimer = 0;
-        s.goalFor = -1;
-    }
-
-    // Get body part positions for a character (for collision + drawing)
-    function getCharParts(p, sc) {
-        const s = sc || 1;
-        const hipX = p.x;
-        const hipY = p.y;
-        const ba = p.bodyAngle;
-        const d = p.dir;
-
-        // Torso goes upward from hip
-        const shoulderX = hipX + Math.sin(ba) * TORSO_LEN * s;
-        const shoulderY = hipY - Math.cos(ba) * TORSO_LEN * s;
-
-        // Head
-        const headX = shoulderX + Math.sin(ba) * (HEAD_R + 3) * s;
-        const headY = shoulderY - Math.cos(ba) * (HEAD_R + 3) * s;
-
-        // Left leg (kicking leg)
-        const la1 = p.legA1;
-        const kneeX = hipX + Math.cos(la1) * UPPER_LEG * s * d;
-        const kneeY = hipY + Math.sin(la1) * UPPER_LEG * s;
-        const la2 = p.legA2;
-        const footX = kneeX + Math.cos(la2) * LOWER_LEG * s * d;
-        const footY = kneeY + Math.sin(la2) * LOWER_LEG * s;
-
-        // Right leg (support leg)
-        const sla1 = Math.PI * 0.45; // hangs mostly down, slight back
-        const skneeX = hipX - Math.cos(sla1) * UPPER_LEG * s * d * 0.3;
-        const skneeY = hipY + Math.sin(sla1) * UPPER_LEG * s;
-        const sfootX = skneeX - Math.cos(sla1) * LOWER_LEG * s * d * 0.1;
-        const sfootY = skneeY + Math.sin(sla1) * LOWER_LEG * s;
-
-        // Arms
-        const aa1 = p.armA1;
-        const elbowX = shoulderX + Math.cos(aa1) * UPPER_ARM * s * d;
-        const elbowY = shoulderY + Math.sin(aa1) * UPPER_ARM * s;
-        const aa2 = p.armA2;
-        const handX = elbowX + Math.cos(aa2) * LOWER_ARM * s * d;
-        const handY = elbowY + Math.sin(aa2) * LOWER_ARM * s;
-
-        return {
-            hipX, hipY, shoulderX, shoulderY, headX, headY, headR: HEAD_R * s,
-            kneeX, kneeY, footX, footY,
-            skneeX, skneeY, sfootX, sfootY,
-            elbowX, elbowY, handX, handY,
-        };
-    }
-
-    // Collision: circle vs line segment, returns push vector or null
-    function circleSegDist(cx, cy, x1, y1, x2, y2) {
-        const dx = x2 - x1, dy = y2 - y1;
-        const len2 = dx * dx + dy * dy;
-        if (len2 === 0) return Math.sqrt((cx - x1) ** 2 + (cy - y1) ** 2);
-        let t = ((cx - x1) * dx + (cy - y1) * dy) / len2;
-        t = Math.max(0, Math.min(1, t));
-        const px = x1 + t * dx, py = y1 + t * dy;
-        return Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
-    }
-
-    function updateGame(state) {
-        if (state.status === 'ended') return;
-
-        // Goal celebration pause
-        if (state.status === 'goal') {
-            state.goalTimer--;
-            if (state.goalTimer <= 0) {
-                // Apply random modifier for next round
-                if (state.score[0] < WIN_SCORE && state.score[1] < WIN_SCORE) {
-                    const mod = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
-                    mod.apply(state);
-                    brModName = mod.name;
-                    brModShowTimer = 90;
-                    resetRound(state);
-                }
-            }
-            state.inputs = [false, false];
-            return;
-        }
-
-        state.t++;
-        const grav = state.mod.grav;
-        const sc = state.mod.pScale;
-        const br = state.mod.ballR;
-        const bounce = state.mod.bounce;
-        const fric = state.mod.friction;
-        const jumpPow = state.mod.jumpPow;
-
-        // ---- PLAYER PHYSICS ----
-        for (let i = 0; i < 2; i++) {
-            const p = state.p[i];
-
-            // Input: jump + kick
-            if (state.inputs[i] && p.grounded) {
-                p.vy = -(jumpPow + Math.random() * 3);
-                p.vx = p.dir * (3 + Math.random() * 4);
-                p.grounded = false;
-                p.kickTime = 0;
-                p.bodyAngVel = -p.dir * (0.06 + Math.random() * 0.04);
-            }
-
-            // Kick animation
-            if (p.kickTime >= 0) {
-                p.kickTime++;
-                const kt = p.kickTime;
-
-                // Leg angles during kick (flying kick motion)
-                if (kt < 8) {
-                    // Wind up: legs pull back
-                    p.legA1 = 0.4 + kt * 0.1;
-                    p.legA2 = 0.6 + kt * 0.12;
-                } else if (kt < 20) {
-                    // Kick forward: legs extend
-                    const t = (kt - 8) / 12;
-                    p.legA1 = 0.4 + 0.8 - t * 1.8;
-                    p.legA2 = 0.6 + 0.96 - t * 2.2;
-                } else {
-                    // Hold extended
-                    p.legA1 = -0.6 + Math.sin(kt * 0.15) * 0.2;
-                    p.legA2 = -0.64 + Math.sin(kt * 0.15 + 0.5) * 0.2;
-                }
-
-                // Arm flailing
-                p.armA1 = Math.sin(kt * 0.25) * 1.5 - 0.5;
-                p.armA2 = Math.sin(kt * 0.3 + 1) * 1.2;
-            }
-
-            // Gravity
-            p.vy += grav;
-            p.x += p.vx;
-            p.y += p.vy;
-
-            // Body tilt
-            p.bodyAngle += p.bodyAngVel;
-            if (p.grounded) {
-                // Spring back to upright
-                p.bodyAngle *= 0.85;
-                p.bodyAngVel *= 0.8;
-            }
-
-            // Clamp body angle
-            p.bodyAngle = Math.max(-1.2, Math.min(1.2, p.bodyAngle));
-
-            // Ground collision
-            if (p.y >= GROUND_Y) {
-                p.y = GROUND_Y;
-                p.vy = 0;
-                p.vx *= fric;
-                if (!p.grounded) {
-                    // Landing
-                    p.grounded = true;
-                    p.kickTime = -1;
-                    p.bodyAngVel = -p.bodyAngle * 0.3; // bounce back
-                    // Reset limbs to idle
-                    p.legA1 = 0.3 + Math.random() * 0.2;
-                    p.legA2 = 0.4 + Math.random() * 0.2;
-                    p.armA1 = 0.3;
-                    p.armA2 = 0.5;
-                }
-                // Idle sway
-                if (p.kickTime < 0) {
-                    p.legA1 = 0.35 + Math.sin(state.t * 0.04) * 0.05;
-                    p.legA2 = 0.45 + Math.sin(state.t * 0.04 + 0.3) * 0.05;
-                    p.armA1 = 0.4 + Math.sin(state.t * 0.03) * 0.1;
-                    p.armA2 = 0.6 + Math.sin(state.t * 0.035 + 0.5) * 0.1;
-                }
-            }
-
-            // Wall clamp
-            p.x = Math.max(30, Math.min(CW - 30, p.x));
-
-            // Slow walk toward ball when grounded
-            if (p.grounded && p.kickTime < 0) {
-                const diff = state.ball.x - p.x;
-                if (Math.abs(diff) > 40) {
-                    p.vx += Math.sign(diff) * 0.15;
-                }
-                p.vx *= 0.9;
-            }
-        }
-
-        // ---- BALL PHYSICS ----
-        const b = state.ball;
-        b.vy += grav;
-        b.x += b.vx;
-        b.y += b.vy;
-        b.spin += b.vx * 0.04;
-
-        // Ball-ground
-        if (b.y + br >= GROUND_Y) {
-            b.y = GROUND_Y - br;
-            b.vy *= -bounce;
-            b.vx *= 0.94;
-            if (Math.abs(b.vy) < 1) b.vy = 0;
-        }
-        // Ball-ceiling
-        if (b.y - br <= 0) { b.y = br; b.vy *= -bounce; }
-        // Ball-walls
-        if (b.x - br <= 0) { b.x = br; b.vx *= -0.6; }
-        if (b.x + br >= CW) { b.x = CW - br; b.vx *= -0.6; }
-
-        // Air drag
-        b.vx *= 0.999;
-
-        // ---- BALL vs PLAYER COLLISION ----
-        for (let i = 0; i < 2; i++) {
-            const p = state.p[i];
-            const parts = getCharParts(p, sc);
-
-            // Collider points: head, shoulder, hip, knee, foot, hand
-            const colliders = [
-                { x: parts.headX, y: parts.headY, r: parts.headR + 2, pow: 1.0 },
-                { x: parts.shoulderX, y: parts.shoulderY, r: 8 * sc, pow: 0.8 },
-                { x: parts.hipX, y: parts.hipY, r: 8 * sc, pow: 0.7 },
-                { x: parts.kneeX, y: parts.kneeY, r: 7 * sc, pow: 1.2 },
-                { x: parts.footX, y: parts.footY, r: 8 * sc, pow: 2.0 },
-                { x: parts.handX, y: parts.handY, r: 6 * sc, pow: 1.0 },
-                { x: parts.sfootX, y: parts.sfootY, r: 7 * sc, pow: 1.0 },
-            ];
-
-            for (const c of colliders) {
-                const dx = b.x - c.x;
-                const dy = b.y - c.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const minD = br + c.r;
-                if (dist < minD && dist > 0.1) {
-                    const nx = dx / dist, ny = dy / dist;
-                    // Push ball out
-                    b.x = c.x + nx * minD;
-                    b.y = c.y + ny * minD;
-
-                    // Hit force depends on body part power and velocity
-                    const vel = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-                    const hitForce = (5 + vel * 0.6) * c.pow;
-                    const kickBonus = (p.kickTime >= 8 && p.kickTime <= 25) ? 1.6 : 1.0;
-                    b.vx = nx * hitForce * kickBonus + p.vx * 0.4 + (Math.random() - 0.5) * 2;
-                    b.vy = ny * hitForce * kickBonus + p.vy * 0.3 - 2;
-
-                    // Push player back
-                    p.vx -= nx * 2;
-                    p.vy -= ny * 1;
-                    break; // only one collision per player per frame
-                }
-            }
-        }
-
-        // ---- BALL vs BACKBOARD / RIM ----
-        // Left backboard (x=45, y from RIM_Y-40 to RIM_Y+30)
-        if (b.x - br < 48 && b.y > RIM_Y - 40 && b.y < RIM_Y + 30 && b.vx < 0) {
-            b.x = 48 + br; b.vx *= -0.5;
-        }
-        // Right backboard
-        if (b.x + br > CW - 48 && b.y > RIM_Y - 40 && b.y < RIM_Y + 30 && b.vx > 0) {
-            b.x = CW - 48 - br; b.vx *= -0.5;
-        }
-        // Left rim edges (two small circles at rim endpoints)
-        rimBounce(b, br, bounce, RIM_LEFT_X - RIM_W / 2, RIM_Y);
-        rimBounce(b, br, bounce, RIM_LEFT_X + RIM_W / 2, RIM_Y);
-        // Right rim edges
-        rimBounce(b, br, bounce, RIM_RIGHT_X - RIM_W / 2, RIM_Y);
-        rimBounce(b, br, bounce, RIM_RIGHT_X + RIM_W / 2, RIM_Y);
-
-        // ---- SCORING ----
-        // Left hoop: ball center passes through rim opening going downward
-        if (b.x > RIM_LEFT_X - RIM_W / 2 + 2 && b.x < RIM_LEFT_X + RIM_W / 2 - 2 &&
-            b.y > RIM_Y && b.y < RIM_Y + 20 && b.vy > 0.5) {
-            // Right player scores (scoring in opponent's hoop)
-            scoreGoal(state, 1);
-        }
-        // Right hoop
-        if (b.x > RIM_RIGHT_X - RIM_W / 2 + 2 && b.x < RIM_RIGHT_X + RIM_W / 2 - 2 &&
-            b.y > RIM_Y && b.y < RIM_Y + 20 && b.vy > 0.5) {
-            scoreGoal(state, 0);
-        }
-
-        // Clear inputs
-        state.inputs = [false, false];
-    }
-
-    function rimBounce(b, br, bounce, rx, ry) {
-        const rimR = 4;
-        const dx = b.x - rx, dy = b.y - ry;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const minD = br + rimR;
-        if (dist < minD && dist > 0.1) {
-            const nx = dx / dist, ny = dy / dist;
-            b.x = rx + nx * minD;
-            b.y = ry + ny * minD;
-            // Reflect velocity
-            const dot = b.vx * nx + b.vy * ny;
-            b.vx -= 2 * dot * nx * bounce;
-            b.vy -= 2 * dot * ny * bounce;
-            b.vx += (Math.random() - 0.5) * 1.5; // rattling randomness
-        }
-    }
-
-    function scoreGoal(state, forPlayer) {
-        state.score[forPlayer]++;
-        state.goalFor = forPlayer;
-        state.status = 'goal';
-        state.goalTimer = 80; // ~1.3 seconds celebration
-        brScoreFlash = 25;
-        brShake = 12;
-        if (state.score[forPlayer] >= WIN_SCORE) {
-            state.status = 'ended';
-            state.winner = forPlayer;
-        }
-    }
-
-    // ---- RENDERING ----
-    function renderGame(ctx, state) {
-        const sc = state.mod.pScale;
-        const br = state.mod.ballR;
-
-        // Screen shake
-        ctx.save();
-        if (brShake > 0) {
-            ctx.translate(
-                (Math.random() - 0.5) * brShake * 1.5,
-                (Math.random() - 0.5) * brShake * 1.5
-            );
-            brShake *= 0.88;
-            if (brShake < 0.5) brShake = 0;
-        }
-
-        // Sky / background
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, CW, CH);
-
-        // Court floor (wood)
-        const floorGrad = ctx.createLinearGradient(0, GROUND_Y, 0, CH);
-        floorGrad.addColorStop(0, '#8B5E3C');
-        floorGrad.addColorStop(1, '#6B3F1F');
-        ctx.fillStyle = floorGrad;
-        ctx.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
-
-        // Floor lines
-        ctx.strokeStyle = '#9B6E4C';
-        ctx.lineWidth = 1;
-        for (let lx = 0; lx < CW; lx += 60) {
-            ctx.beginPath(); ctx.moveTo(lx, GROUND_Y); ctx.lineTo(lx, CH); ctx.stroke();
-        }
-        ctx.strokeStyle = '#A0784F';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(CW, GROUND_Y); ctx.stroke();
-
-        // Center line
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath(); ctx.moveTo(CW / 2, GROUND_Y - 5); ctx.lineTo(CW / 2, GROUND_Y + 50); ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Center circle
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(CW / 2, GROUND_Y, 50, Math.PI, 0); ctx.stroke();
-
-        // Draw hoops (behind players)
-        drawHoop(ctx, RIM_LEFT_X, RIM_Y, true);
-        drawHoop(ctx, RIM_RIGHT_X, RIM_Y, false);
-
-        // Draw players
-        drawChar(ctx, state.p[0], sc, '#00BFFF', '#0088BB', '#FFD93D');
-        drawChar(ctx, state.p[1], sc, '#FF6B2B', '#CC4400', '#FFD93D');
-
-        // Draw ball
-        drawBall(ctx, state.ball, br);
-
-        // Score flash overlay
-        if (brScoreFlash > 0) {
-            ctx.fillStyle = `rgba(255,255,255,${brScoreFlash / 50})`;
-            ctx.fillRect(0, 0, CW, CH);
-            brScoreFlash--;
-        }
-
-        // Goal text
-        if (state.status === 'goal') {
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 36px "Press Start 2P", monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.shadowColor = state.goalFor === 0 ? '#00BFFF' : '#FF6B2B';
-            ctx.shadowBlur = 30;
-            ctx.fillText('SCORE!', CW / 2, CH / 2 - 20);
-            ctx.shadowBlur = 0;
-        }
-
-        // In-canvas score
-        ctx.font = 'bold 22px "Press Start 2P", monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillStyle = '#00BFFF';
-        ctx.fillText(state.score[0], CW / 2 - 50, 15);
-        ctx.fillStyle = '#444';
-        ctx.fillText(':', CW / 2, 15);
-        ctx.fillStyle = '#FF6B2B';
-        ctx.fillText(state.score[1], CW / 2 + 50, 15);
-
-        ctx.restore();
-    }
-
-    function drawHoop(ctx, rx, ry, isLeft) {
-        const dir = isLeft ? -1 : 1;
-        const bbX = isLeft ? 40 : CW - 40;
-
-        // Pole
-        ctx.strokeStyle = '#555';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.moveTo(bbX, GROUND_Y);
-        ctx.lineTo(bbX, ry - 42);
-        ctx.stroke();
-
-        // Backboard
-        ctx.fillStyle = '#ddd';
-        ctx.fillRect(bbX - 3, ry - 42, 6, BACKBOARD_H);
-        ctx.strokeStyle = '#888';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(bbX - 3, ry - 42, 6, BACKBOARD_H);
-
-        // Backboard inner rectangle (target square)
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(bbX + dir * 2 - 1, ry - 14, 3, 24);
-
-        // Rim bracket
-        ctx.fillStyle = '#ff4411';
-        ctx.fillRect(bbX + dir * 2, ry - 3, dir * (RIM_W / 2 + 8), 5);
-
-        // Rim (the scoring opening)
-        ctx.strokeStyle = '#ff4411';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(rx - RIM_W / 2, ry);
-        ctx.lineTo(rx + RIM_W / 2, ry);
-        ctx.stroke();
-
-        // Rim endpoints (small circles for visual)
-        ctx.fillStyle = '#ff4411';
-        ctx.beginPath(); ctx.arc(rx - RIM_W / 2, ry, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(rx + RIM_W / 2, ry, 3, 0, Math.PI * 2); ctx.fill();
-
-        // Net
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth = 1.2;
-        const netH = 28;
-        const netSegs = 5;
-        for (let i = 0; i <= netSegs; i++) {
-            const t = i / netSegs;
-            const topX = rx - RIM_W / 2 + t * RIM_W;
-            const bottomX = rx - RIM_W / 4 + t * RIM_W / 2;
-            ctx.beginPath();
-            ctx.moveTo(topX, ry + 2);
-            // Slight curve
-            ctx.quadraticCurveTo(
-                (topX + bottomX) / 2 + Math.sin(t * 3 + brFrameCount * 0.02) * 3,
-                ry + netH * 0.6,
-                bottomX, ry + netH
-            );
-            ctx.stroke();
-        }
-        // Horizontal net lines
-        for (let j = 1; j <= 3; j++) {
-            const ny = ry + 2 + (netH * j) / 4;
-            const shrink = j * 2;
-            ctx.beginPath();
-            ctx.moveTo(rx - RIM_W / 2 + shrink, ny);
-            ctx.lineTo(rx + RIM_W / 2 - shrink, ny);
-            ctx.stroke();
-        }
-    }
-
-    function drawChar(ctx, p, sc, color, darkColor, skinColor) {
-        const parts = getCharParts(p, sc);
-
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // Support leg
-        ctx.strokeStyle = darkColor;
-        ctx.lineWidth = LIMB_W * sc;
-        ctx.beginPath();
-        ctx.moveTo(parts.hipX, parts.hipY);
-        ctx.lineTo(parts.skneeX, parts.skneeY);
-        ctx.lineTo(parts.sfootX, parts.sfootY);
-        ctx.stroke();
-        // Shoe
-        ctx.fillStyle = '#333';
-        ctx.beginPath(); ctx.arc(parts.sfootX, parts.sfootY, 4 * sc, 0, Math.PI * 2); ctx.fill();
-
-        // Kicking leg
-        ctx.strokeStyle = color;
-        ctx.lineWidth = (LIMB_W + 1) * sc;
-        ctx.beginPath();
-        ctx.moveTo(parts.hipX, parts.hipY);
-        ctx.lineTo(parts.kneeX, parts.kneeY);
-        ctx.lineTo(parts.footX, parts.footY);
-        ctx.stroke();
-        // Shoe
-        ctx.fillStyle = '#222';
-        ctx.beginPath(); ctx.arc(parts.footX, parts.footY, 5 * sc, 0, Math.PI * 2); ctx.fill();
-
-        // Torso
-        ctx.strokeStyle = color;
-        ctx.lineWidth = (LIMB_W + 3) * sc;
-        ctx.beginPath();
-        ctx.moveTo(parts.hipX, parts.hipY);
-        ctx.lineTo(parts.shoulderX, parts.shoulderY);
-        ctx.stroke();
-
-        // Jersey stripe
-        const mx = (parts.hipX + parts.shoulderX) / 2;
-        const my = (parts.hipY + parts.shoulderY) / 2;
-        ctx.strokeStyle = darkColor;
-        ctx.lineWidth = 3 * sc;
-        ctx.beginPath();
-        ctx.moveTo(mx - 4 * sc * p.dir, my);
-        ctx.lineTo(mx + 4 * sc * p.dir, my);
-        ctx.stroke();
-
-        // Arm
-        ctx.strokeStyle = skinColor;
-        ctx.lineWidth = (LIMB_W - 1) * sc;
-        ctx.beginPath();
-        ctx.moveTo(parts.shoulderX, parts.shoulderY);
-        ctx.lineTo(parts.elbowX, parts.elbowY);
-        ctx.lineTo(parts.handX, parts.handY);
-        ctx.stroke();
-        // Hand
-        ctx.fillStyle = skinColor;
-        ctx.beginPath(); ctx.arc(parts.handX, parts.handY, 3 * sc, 0, Math.PI * 2); ctx.fill();
-
-        // Head
-        ctx.fillStyle = skinColor;
-        ctx.beginPath();
-        ctx.arc(parts.headX, parts.headY, parts.headR, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#CC9900';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // Eyes (always facing direction)
-        const eyeOff = p.dir * 3 * sc;
-        ctx.fillStyle = '#222';
-        ctx.beginPath();
-        ctx.arc(parts.headX + eyeOff, parts.headY - 2 * sc, 2 * sc, 0, Math.PI * 2);
-        ctx.fill();
-        // Eye white dot
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(parts.headX + eyeOff + 0.5 * sc, parts.headY - 2.5 * sc, 0.8 * sc, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Headband
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3 * sc;
-        const hbAngle = p.bodyAngle;
-        ctx.beginPath();
-        ctx.arc(parts.headX, parts.headY, parts.headR + 1, -Math.PI * 0.3 + hbAngle, Math.PI * 0.3 + hbAngle);
-        ctx.stroke();
-    }
-
-    function drawBall(ctx, ball, br) {
-        ctx.save();
-        ctx.translate(ball.x, ball.y);
-        ctx.rotate(ball.spin);
-
-        // Ball shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.beginPath();
-        ctx.ellipse(2, 2, br, br * 0.9, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Ball body
-        const grad = ctx.createRadialGradient(-br * 0.3, -br * 0.3, br * 0.1, 0, 0, br);
-        grad.addColorStop(0, '#FF8C00');
-        grad.addColorStop(0.7, '#E06000');
-        grad.addColorStop(1, '#B84000');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(0, 0, br, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Ball outline
-        ctx.strokeStyle = '#8B3000';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, br, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Seam lines
-        ctx.strokeStyle = '#8B300066';
-        ctx.lineWidth = 1;
-        // Vertical
-        ctx.beginPath();
-        ctx.ellipse(0, 0, br * 0.15, br, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        // Horizontal
-        ctx.beginPath();
-        ctx.moveTo(-br * 0.7, 0);
-        ctx.quadraticCurveTo(0, -br * 0.3, br * 0.7, 0);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-br * 0.7, 0);
-        ctx.quadraticCurveTo(0, br * 0.3, br * 0.7, 0);
-        ctx.stroke();
-
-        ctx.restore();
-    }
 
     // Side selection
     function brOnlineSetSide(s) {
@@ -1984,210 +1331,227 @@
             }
 
             // Game started
-            if (data.status === 'playing' && (currentScreen === 'brOnlineLobby' || currentScreen === 'brOnlineEnd')) {
-                brStartGameplay(data);
-            }
-
-            // Sync game state (client only) - handle playing and goal states
-            if ((data.status === 'playing') && currentScreen === 'brOnlineGame' && !brOnlineIsHost && data.gameState) {
-                const newGs = JSON.parse(JSON.stringify(data.gameState));
-                // Detect score changes for flash/shake effects
-                if (gs && newGs.score && gs.score &&
-                    (newGs.score[0] !== gs.score[0] || newGs.score[1] !== gs.score[1])) {
-                    brScoreFlash = 25;
-                    brShake = 12;
-                }
-                gs = newGs;
-                updateBrScoreUI();
-                if (gs.status === 'ended') {
-                    brShowEndScreen();
-                }
-            }
-
-            // Game ended
-            if (data.status === 'ended' && currentScreen === 'brOnlineGame') {
-                if (data.gameState) gs = JSON.parse(JSON.stringify(data.gameState));
-                brShowEndScreen();
+            if (data.status === 'playing' && currentScreen === 'brOnlineLobby') {
+                brStartGameplay();
             }
 
             // Back to lobby
-            if (data.status === 'lobby' && (currentScreen === 'brOnlineEnd' || currentScreen === 'brOnlineGame')) {
-                brStopGameLoop();
+            if (data.status === 'lobby' && currentScreen === 'brOnlineGame') {
+                brCleanupWebRTC();
                 showScreen('brOnlineLobby');
             }
         });
     }
 
-    // Get my player index (0=left, 1=right)
-    function getMyPlayerIndex() {
-        return brOnlineSide === 'left' ? 0 : 1;
-    }
-
+    // Start online game (host only)
     async function brStartOnlineGame() {
         if (!brOnlineIsHost) return;
         const snap = await brOnlineRoomRef.once('value');
         const data = snap.val();
         if (Object.keys(data.players || {}).length < 2) return;
 
-        gs = initGameState();
-        brModTimer = 0;
+        // Clear any previous WebRTC signaling data
+        await brOnlineRoomRef.child('webrtc').remove();
+        await brOnlineRoomRef.update({ status: 'playing' });
+    }
 
-        await brOnlineRoomRef.update({
-            gameState: gs,
-            status: 'playing'
+    // Both players enter the game screen
+    function brStartGameplay() {
+        showScreen('brOnlineGame');
+        const statusEl = document.getElementById('brOnlineConnStatus');
+        statusEl.style.display = 'block';
+
+        if (brOnlineIsHost) {
+            // Host: load game in iframe and set up WebRTC
+            statusEl.textContent = 'Loading game...';
+            document.getElementById('brOnlineIframeWrap').style.display = 'block';
+            document.getElementById('brGameVideo').style.display = 'none';
+            document.getElementById('brOnlineTip').textContent =
+                'You are the host. Select "2 PLAYER" in the game menu. You play ' +
+                brOnlineSide.toUpperCase() + ' side (' + (brOnlineSide === 'left' ? 'W key' : 'UP arrow') + ').';
+
+            const iframe = document.getElementById('brGameIframe');
+            brGameIframe = iframe;
+            iframe.srcdoc = buildGameHTML();
+
+            // Wait for canvas then set up WebRTC
+            waitForCanvas(iframe).then(canvas => {
+                statusEl.textContent = 'Connecting to opponent...';
+                brSetupHostWebRTC(canvas);
+            }).catch(err => {
+                statusEl.textContent = 'Failed to load game. Try leaving and rejoining.';
+                console.error('Canvas wait error:', err);
+            });
+        } else {
+            // Client: show video, set up WebRTC
+            statusEl.textContent = 'Waiting for host to load game...';
+            document.getElementById('brOnlineIframeWrap').style.display = 'none';
+            document.getElementById('brGameVideo').style.display = 'block';
+            document.getElementById('brOnlineTip').textContent =
+                'You are viewing the host\'s game. You play ' +
+                brOnlineSide.toUpperCase() + ' side (' + (brOnlineSide === 'left' ? 'W key' : 'UP arrow') + '). Press your key to play!';
+
+            brSetupClientWebRTC();
+        }
+    }
+
+    // Host: Set up WebRTC peer connection and stream game canvas
+    async function brSetupHostWebRTC(canvas) {
+        brPeerConn = new RTCPeerConnection(RTC_CONFIG);
+
+        // Create data channel for receiving client inputs
+        brDataChannel = brPeerConn.createDataChannel('inputs');
+        brDataChannel.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (brGameIframe && brGameIframe.contentWindow) {
+                    brGameIframe.contentWindow.postMessage(msg, '*');
+                }
+            } catch(err) { console.error('Data channel message error:', err); }
+        };
+
+        // Capture game canvas stream and add to peer connection
+        const stream = canvas.captureStream(30);
+        stream.getTracks().forEach(track => brPeerConn.addTrack(track, stream));
+
+        // ICE connection state monitoring
+        brPeerConn.oniceconnectionstatechange = () => {
+            if (!brPeerConn) return;
+            const state = brPeerConn.iceConnectionState;
+            const statusEl = document.getElementById('brOnlineConnStatus');
+            if (state === 'connected' || state === 'completed') {
+                statusEl.textContent = 'Opponent connected!';
+                setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+            } else if (state === 'failed') {
+                statusEl.textContent = 'Connection failed. Try leaving and rejoining.';
+                statusEl.style.display = 'block';
+            } else if (state === 'disconnected') {
+                statusEl.textContent = 'Opponent disconnected...';
+                statusEl.style.display = 'block';
+            }
+        };
+
+        // Send ICE candidates to Firebase
+        brPeerConn.onicecandidate = (e) => {
+            if (e.candidate && brOnlineRoomRef) {
+                brOnlineRoomRef.child('webrtc/hostCandidates').push(e.candidate.toJSON());
+            }
+        };
+
+        // Create and send offer
+        const offer = await brPeerConn.createOffer();
+        await brPeerConn.setLocalDescription(offer);
+        await brOnlineRoomRef.child('webrtc/offer').set({
+            type: offer.type,
+            sdp: offer.sdp
+        });
+
+        // Listen for client's answer
+        brOnlineRoomRef.child('webrtc/answer').on('value', async (snap) => {
+            const answer = snap.val();
+            if (answer && brPeerConn && brPeerConn.signalingState !== 'stable') {
+                try {
+                    await brPeerConn.setRemoteDescription(new RTCSessionDescription(answer));
+                } catch(e) { console.error('Error setting answer:', e); }
+            }
+        });
+
+        // Listen for client's ICE candidates
+        brOnlineRoomRef.child('webrtc/clientCandidates').on('child_added', async (snap) => {
+            const candidate = snap.val();
+            if (candidate && brPeerConn) {
+                try {
+                    await brPeerConn.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch(e) { console.error('Error adding client ICE candidate:', e); }
+            }
         });
     }
 
-    function brStartGameplay(data) {
-        if (data.gameState) gs = JSON.parse(JSON.stringify(data.gameState));
-        else gs = initGameState();
+    // Client: Set up WebRTC peer connection to receive game stream
+    function brSetupClientWebRTC() {
+        brPeerConn = new RTCPeerConnection(RTC_CONFIG);
 
-        brModTimer = 0;
-        brScoreFlash = 0;
-        brGameActive = true;
+        // Receive video stream from host
+        brPeerConn.ontrack = (e) => {
+            const video = document.getElementById('brGameVideo');
+            video.srcObject = e.streams[0];
+            video.play().catch(() => {});
+        };
 
-        showScreen('brOnlineGame');
-        updateBrScoreUI();
+        // Receive data channel (for future use)
+        brPeerConn.ondatachannel = (e) => {
+            brDataChannel = e.channel;
+        };
 
-        if (brOnlineIsHost) {
-            brStartGameLoop();
-        } else {
-            brStartRenderLoop();
-        }
-    }
-
-    function brStartGameLoop() {
-        const canvas = document.getElementById('brCanvas');
-        const ctx = canvas.getContext('2d');
-
-        brStopGameLoop();
-        brGameActive = true;
-        brFrameCount = 0;
-
-        function loop() {
-            if (!brGameActive) return;
-            brFrameCount++;
-            const now = performance.now();
-
-            if (brModShowTimer > 0) brModShowTimer--;
-
-            updateGame(gs);
-            renderGame(ctx, gs);
-
-            // Show modifier name
-            const announce = document.getElementById('brModAnnounce');
-            if (brModShowTimer > 0) {
-                announce.textContent = brModName;
-                announce.classList.add('show');
-            } else {
-                announce.classList.remove('show');
+        // ICE connection state monitoring
+        brPeerConn.oniceconnectionstatechange = () => {
+            if (!brPeerConn) return;
+            const state = brPeerConn.iceConnectionState;
+            const statusEl = document.getElementById('brOnlineConnStatus');
+            if (state === 'connected' || state === 'completed') {
+                statusEl.textContent = 'Connected!';
+                setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+            } else if (state === 'failed') {
+                statusEl.textContent = 'Connection failed. Try leaving and rejoining.';
+                statusEl.style.display = 'block';
+            } else if (state === 'disconnected') {
+                statusEl.textContent = 'Host disconnected...';
+                statusEl.style.display = 'block';
             }
+        };
 
-            updateBrScoreUI();
-
-            // Sync to Firebase at ~15fps
-            if (now - brLastSyncTime > 66) {
-                brLastSyncTime = now;
-                if (brOnlineRoomRef) {
-                    brOnlineRoomRef.child('gameState').set(gs);
-                }
+        // Send ICE candidates to Firebase
+        brPeerConn.onicecandidate = (e) => {
+            if (e.candidate && brOnlineRoomRef) {
+                brOnlineRoomRef.child('webrtc/clientCandidates').push(e.candidate.toJSON());
             }
+        };
 
-            // Check win
-            if (gs.status === 'ended') {
-                brOnlineRoomRef.update({ gameState: gs, status: 'ended' });
-                brShowEndScreen();
-                return;
+        // Listen for host's offer
+        brOnlineRoomRef.child('webrtc/offer').on('value', async (snap) => {
+            const offer = snap.val();
+            if (offer && brPeerConn && brPeerConn.signalingState === 'stable') {
+                try {
+                    await brPeerConn.setRemoteDescription(new RTCSessionDescription(offer));
+                    const answer = await brPeerConn.createAnswer();
+                    await brPeerConn.setLocalDescription(answer);
+                    await brOnlineRoomRef.child('webrtc/answer').set({
+                        type: answer.type,
+                        sdp: answer.sdp
+                    });
+                } catch(e) { console.error('Error handling offer:', e); }
             }
+        });
 
-            brGameLoop = requestAnimationFrame(loop);
-        }
-
-        brGameLoop = requestAnimationFrame(loop);
-    }
-
-    function brStartRenderLoop() {
-        const canvas = document.getElementById('brCanvas');
-        const ctx = canvas.getContext('2d');
-
-        brStopGameLoop();
-        brGameActive = true;
-
-        function loop() {
-            if (!brGameActive) return;
-            brFrameCount++;
-            if (gs) {
-                renderGame(ctx, gs);
+        // Listen for host's ICE candidates
+        brOnlineRoomRef.child('webrtc/hostCandidates').on('child_added', async (snap) => {
+            const candidate = snap.val();
+            if (candidate && brPeerConn) {
+                try {
+                    await brPeerConn.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch(e) { console.error('Error adding host ICE candidate:', e); }
             }
-
-            const announce = document.getElementById('brModAnnounce');
-            if (brModShowTimer > 0) {
-                announce.textContent = brModName;
-                announce.classList.add('show');
-                brModShowTimer--;
-            } else {
-                announce.classList.remove('show');
-            }
-
-            brGameLoop = requestAnimationFrame(loop);
-        }
-
-        brGameLoop = requestAnimationFrame(loop);
+        });
     }
 
-    function brStopGameLoop() {
-        if (brGameLoop) {
-            cancelAnimationFrame(brGameLoop);
-            brGameLoop = null;
-        }
-        brGameActive = false;
-    }
-
-    function updateBrScoreUI() {
-        if (!gs) return;
-        document.getElementById('brScoreLeft').textContent = gs.score[0];
-        document.getElementById('brScoreRight').textContent = gs.score[1];
-    }
-
-    function brShowEndScreen() {
-        brStopGameLoop();
-
-        document.getElementById('brEndScoreLeft').textContent = gs.score[0];
-        document.getElementById('brEndScoreRight').textContent = gs.score[1];
-
-        const myIdx = getMyPlayerIndex();
-        let msg = '';
-        if (gs.winner === myIdx) msg = 'YOU WIN!';
-        else if (gs.winner === -1) msg = 'DRAW!';
-        else msg = 'YOU LOSE!';
-        document.getElementById('brEndMessage').textContent = msg;
-
-        if (brOnlineIsHost) {
-            document.getElementById('brPlayAgainBtn').style.display = 'block';
-            document.getElementById('brEndStatus').style.display = 'none';
-        } else {
-            document.getElementById('brPlayAgainBtn').style.display = 'none';
-            document.getElementById('brEndStatus').style.display = 'block';
-        }
-
-        showScreen('brOnlineEnd');
-    }
-
-    async function brPlayAgain() {
-        if (!brOnlineIsHost || !brOnlineRoomRef) return;
-        gs = initGameState();
-        brModTimer = 0;
-        await brOnlineRoomRef.update({ gameState: gs, status: 'playing' });
+    // Clean up WebRTC connection
+    function brCleanupWebRTC() {
+        if (brDataChannel) { brDataChannel.close(); brDataChannel = null; }
+        if (brPeerConn) { brPeerConn.close(); brPeerConn = null; }
+        brGameIframe = null;
+        const iframe = document.getElementById('brGameIframe');
+        if (iframe) iframe.srcdoc = '';
+        const video = document.getElementById('brGameVideo');
+        if (video) { video.srcObject = null; video.style.display = 'none'; }
     }
 
     function brCleanup() {
-        brStopGameLoop();
+        brCleanupWebRTC();
         if (brOnlineRoomRef) brOnlineRoomRef.off();
         brOnlineRoomRef = null;
         brOnlinePlayerId = null;
         brOnlineRoomCode = null;
         brOnlineIsHost = false;
-        gs = null;
     }
 
     async function brLeaveRoom() {
@@ -2217,53 +1581,43 @@
     }
 
     // ============================================================
-    // INPUT HANDLING
+    // INPUT HANDLING (Client sends keys via WebRTC data channel)
     // ============================================================
     document.addEventListener('keydown', (e) => {
-        if (!brGameActive || !gs || gs.status !== 'playing') return;
+        if (currentScreen !== 'brOnlineGame') return;
 
-        const myIdx = getMyPlayerIndex();
-        const key = e.key.toLowerCase();
-
-        if (key === ' ' || key === 'w' || key === 'arrowup') {
-            e.preventDefault();
-            if (brOnlineIsHost) {
-                // Host: apply input directly
-                gs.inputs[myIdx] = true;
-            } else {
-                // Client: send input to Firebase
-                if (brOnlineRoomRef) {
-                    brOnlineRoomRef.child('gameState/inputs/' + myIdx).set(true);
-                }
+        // Client: send key presses to host via data channel
+        if (!brOnlineIsHost && brDataChannel && brDataChannel.readyState === 'open') {
+            const key = e.key;
+            if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
+                e.preventDefault();
+                brDataChannel.send(JSON.stringify({
+                    type: 'keydown',
+                    key: e.key,
+                    code: e.code,
+                    keyCode: e.keyCode
+                }));
             }
         }
     });
 
-    // Host listens for client inputs
-    function setupInputListener() {
-        if (brOnlineRoomRef && brOnlineIsHost) {
-            const opponentIdx = getMyPlayerIndex() === 0 ? 1 : 0;
-            brOnlineRoomRef.child('gameState/inputs/' + opponentIdx).on('value', (snap) => {
-                if (snap.val() === true && gs && gs.status === 'playing') {
-                    gs.inputs[opponentIdx] = true;
-                }
-            });
+    document.addEventListener('keyup', (e) => {
+        if (currentScreen !== 'brOnlineGame') return;
+
+        // Client: send key releases to host via data channel
+        if (!brOnlineIsHost && brDataChannel && brDataChannel.readyState === 'open') {
+            const key = e.key;
+            if (key === 'w' || key === 'W' || key === 'ArrowUp' || key === ' ') {
+                e.preventDefault();
+                brDataChannel.send(JSON.stringify({
+                    type: 'keyup',
+                    key: e.key,
+                    code: e.code,
+                    keyCode: e.keyCode
+                }));
+            }
         }
-    }
-
-    // Override brStartOnlineGame to add input listener
-    const _origBrStart = brStartOnlineGame;
-    brStartOnlineGame = async function() {
-        await _origBrStart();
-        setupInputListener();
-    };
-
-    // Also set up input listener when game starts for host via room listener
-    const _origBrStartGameplay = brStartGameplay;
-    brStartGameplay = function(data) {
-        _origBrStartGameplay(data);
-        if (brOnlineIsHost) setupInputListener();
-    };
+    });
 
     // ============================================================
     // INIT
